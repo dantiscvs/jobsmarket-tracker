@@ -212,6 +212,8 @@ footer a:hover { color: var(--accent); }
 .detail-cat-num { font-family: var(--mono); font-size: 13.5px; font-weight: 700; flex-shrink: 0; width: 80px; text-align: right; }
 .detail-cat-bar { flex-shrink: 0; width: 140px; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
 .detail-cat-bar i { display: block; height: 100%; border-radius: 3px; transition: width 600ms cubic-bezier(.2,.8,.2,1); }
+.detail-cat-sub { font-size: 11px; color: var(--text-faint); margin-top: 3px; line-height: 1.5; }
+.detail-cat-sub span { display: inline-block; margin-right: 4px; }
 
 /* ============ Skeleton & states ============ */
 .skeleton { position: relative; overflow: hidden; background: rgba(255,255,255,0.05); border-radius: 8px; }
@@ -391,6 +393,62 @@ const PRACUJ_LABELS = {
   ubezpieczenia:'Ubezpieczenia', zakupy:'Zakupy', kontrola_jakosci:'Kontrola jakości',
   zdrowie_uroda_rekreacja:'Zdrowie / Uroda / Rekreacja', energetyka:'Energetyka',
   doradztwo_konsulting:'Doradztwo i Konsulting',
+};
+
+// Mapping raw column → meta category (mirrors Tracker D)
+// null entries omitted — only mapped columns listed
+const RAW_COL_MAP = {
+  pracuj_administracja_biurowa:'administracja', pracuj_badania_rozwoj:'inzynieria',
+  pracuj_bankowosc:'finanse_ksiegowosc', pracuj_bhp_ochrona_srodowiska:'inzynieria',
+  pracuj_budownictwo:'budownictwo', pracuj_call_center:'call_center',
+  pracuj_edukacja_szkolenia:'edukacja', pracuj_finanse_ekonomia:'finanse_ksiegowosc',
+  pracuj_hotelarstwo_gastronomia_turystyka:'gastronomia_hotelarstwo',
+  pracuj_human_resources:'hr_rekrutacja', pracuj_internet_ecommerce:'marketing_design',
+  pracuj_inzynieria:'inzynieria', pracuj_it_administracja:'it',
+  pracuj_it_rozwoj_oprogramowania:'it', pracuj_lancuch_dostaw:'transport_logistyka',
+  pracuj_marketing:'marketing_design', pracuj_media_sztuka_rozrywka:'marketing_design',
+  pracuj_obsluga_klienta:'obsluga_klienta', pracuj_praca_fizyczna:'fizyczni',
+  pracuj_produkcja:'produkcja', pracuj_public_relations:'marketing_design',
+  pracuj_reklama_grafika:'marketing_design', pracuj_sektor_publiczny:'administracja',
+  pracuj_sprzedaz:'sprzedaz_zakupy', pracuj_transport_logistyka:'transport_logistyka',
+  pracuj_ubezpieczenia:'finanse_ksiegowosc', pracuj_zakupy:'sprzedaz_zakupy',
+  pracuj_kontrola_jakosci:'produkcja', pracuj_zdrowie_uroda_rekreacja:'personel_medyczny',
+  pracuj_energetyka:'inzynieria', pracuj_doradztwo_konsulting:'finanse_ksiegowosc',
+  olx_administracja_biurowa:'administracja', olx_badania_rozwoj:'inzynieria',
+  olx_bankowosc:'finanse_ksiegowosc', olx_bhp_ochrona_srodowiska:'inzynieria',
+  olx_budowa_remonty:'budownictwo', olx_dostawca_kurier_miejski:'transport_logistyka',
+  olx_e_commerce_handel_internetowy:'marketing_design', olx_edukacja:'edukacja',
+  olx_energetyka:'inzynieria', olx_finanse_ksiegowosc:'finanse_ksiegowosc',
+  olx_fryzjerstwo_kosmetyka:'beauty', olx_gastronomia:'gastronomia_hotelarstwo',
+  olx_hr:'hr_rekrutacja', olx_hostessa_roznoszenie_ulotek:'marketing_design',
+  olx_hotelarstwo:'gastronomia_hotelarstwo', olx_inzynieria:'inzynieria',
+  olx_informatyka:'it', olx_kierowca:'transport_logistyka',
+  olx_logistyka_zakupy_spedycja:'transport_logistyka', olx_marketing_pr:'marketing_design',
+  olx_mechanika_lakiernictwo:'montaz_serwis', olx_montaz_serwis:'montaz_serwis',
+  olx_obsluga_klienta_call_center:'obsluga_klienta', olx_ochrona:'ochrona',
+  olx_opieka:'opieka', olx_organizacja_obsluga_impres:'marketing_design',
+  olx_prace_magazynowe:'magazyn', olx_pracownik_sklepu:'sklepy',
+  olx_produkcja:'produkcja', olx_rolnictwo_i_ogrodnictwo:'rolnictwo',
+  olx_sluzby_mundurowe:'ochrona', olx_sprzatanie:'fizyczni',
+  olx_sprzedaz:'sprzedaz_zakupy', olx_ubezpieczenia:'finanse_ksiegowosc',
+  justjoin_ai:'it', justjoin_javascript:'it', justjoin_html:'it', justjoin_php:'it',
+  justjoin_ruby:'it', justjoin_python:'it', justjoin_java:'it', justjoin_net:'it',
+  justjoin_scala:'it', justjoin_c:'it', justjoin_mobile:'it', justjoin_testing:'it',
+  justjoin_devops:'it', justjoin_admin:'it', justjoin_ux:'marketing_design',
+  justjoin_pm:'it', justjoin_game:'it', justjoin_analytics:'it', justjoin_security:'it',
+  justjoin_data:'it', justjoin_go:'it', justjoin_support:'obsluga_klienta',
+  justjoin_erp:'it', justjoin_architecture:'it', justjoin_other:'it',
+  rocketjobs_sprzedaz:'sprzedaz_zakupy', rocketjobs_marketing:'marketing_design',
+  rocketjobs_finanse:'finanse_ksiegowosc', rocketjobs_bankowosc:'finanse_ksiegowosc',
+  rocketjobs_inzynieria:'inzynieria', rocketjobs_obsluga_klienta:'obsluga_klienta',
+  rocketjobs_zdrowie_i_uroda:'personel_medyczny', rocketjobs_gastronomia:'gastronomia_hotelarstwo',
+  rocketjobs_turystyka:'gastronomia_hotelarstwo', rocketjobs_zarzadzanie:'administracja',
+  rocketjobs_praca_w_sklepie:'sklepy', rocketjobs_budownictwo:'budownictwo',
+  rocketjobs_produkcja:'produkcja', rocketjobs_edukacja:'edukacja',
+  rocketjobs_logistyka:'transport_logistyka', rocketjobs_hr:'hr_rekrutacja',
+  rocketjobs_design:'marketing_design', rocketjobs_bi_data:'it',
+  rocketjobs_praca_biurowa:'biurowi', rocketjobs_consulting:'finanse_ksiegowosc',
+  rocketjobs_media:'marketing_design',
 };
 
 const CATEGORIES = {
@@ -681,7 +739,7 @@ function renderCategories() {
 
   document.getElementById('catBody').innerHTML = rows.map((r, i) => {
     const cls = Math.abs(r.deltaPct) < 0.05 ? 'chg-flat' : r.delta > 0 ? 'chg-up' : 'chg-down';
-    return `<tr>
+    return `<tr class="cat-row" data-slug="${r.slug}" style="cursor:pointer" title="Kliknij aby zobaczyć podział na portale">
       <td class="cat-name"><span class="cat-rank">${String(i + 1).padStart(2, '0')}</span>${r.name}</td>
       <td class="num">${fmt(r.today)}</td>
       <td class="num ${cls}">${fmtDelta(r.delta)}</td>
@@ -689,6 +747,10 @@ function renderCategories() {
       <td class="bar-cell"><div class="mini-bar"><i style="width:${(r.today / maxToday * 100).toFixed(1)}%"></i></div></td>
     </tr>`;
   }).join('');
+
+  document.querySelectorAll('#catBody .cat-row').forEach(tr => {
+    tr.addEventListener('click', () => navigateToCategory(tr.dataset.slug));
+  });
 
   document.querySelectorAll('#catTable thead th').forEach(th => {
     const sortKey = th.dataset.sort;
@@ -783,6 +845,103 @@ function renderMainChart() {
 }
 
 /* ================================================================
+   CATEGORY DETAIL — portal breakdown for a meta-category
+   ================================================================ */
+const rawCache = {};
+
+async function fetchRawLatest(portalKey) {
+  if (rawCache[portalKey]) return rawCache[portalKey];
+  const meta = PORTALS[portalKey];
+  const res = await fetch(csvUrl(meta.rawGid));
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const rows = parseCSV(await res.text());
+  const num = v => { const n = parseFloat(String(v||'').replace(/[^0-9.]/g,'')); return isFinite(n)?n:0; };
+  const latest = rows.sort((a,b) => (b.datetime||b.date||'') > (a.datetime||a.date||'') ? 1 : -1)[0] || {};
+  rawCache[portalKey] = { row: latest, num };
+  return rawCache[portalKey];
+}
+
+async function renderCategoryDetail(slug) {
+  const catMeta = CATEGORIES[slug];
+  if (!catMeta) return;
+
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('detailView').classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  document.getElementById('detailLogo').textContent = '≡';
+  document.getElementById('detailLogo').style.background = '#3b4057';
+  document.getElementById('detailTitle').textContent = catMeta.label;
+  document.getElementById('detailSub').textContent = 'Ładowanie…';
+  document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie danych z portali…</div>';
+
+  try {
+    // Fetch all 4 portals in parallel
+    const results = await Promise.all(
+      Object.keys(PORTALS).map(k => fetchRawLatest(k).then(d => ({ key: k, ...d })).catch(() => ({ key: k, row: {}, num: v => 0 })))
+    );
+
+    // For each portal, sum columns that map to this meta-category
+    const portalTotals = results.map(({ key, row, num }) => {
+      const portalMeta = PORTALS[key];
+      let total = 0;
+      const contributing = [];
+      for (const [col, cat] of Object.entries(RAW_COL_MAP)) {
+        if (cat !== slug) continue;
+        if (!col.startsWith(portalMeta.prefix)) continue;
+        const val = num(row[col]);
+        if (val > 0) contributing.push({ col, val });
+        total += val;
+      }
+      // handle olx_wykladanie prefix
+      if (slug === 'sklepy' && key === 'olx') {
+        for (const [col, val] of Object.entries(row)) {
+          if (col.startsWith('olx_wykladanie')) { total += num(val); contributing.push({ col, val: num(val) }); }
+        }
+      }
+      return { key, label: portalMeta.label, color: portalMeta.color, total, contributing };
+    }).filter(p => p.total > 0).sort((a,b) => b.total - a.total);
+
+    const grandTotal = portalTotals.reduce((s, p) => s + p.total, 0);
+    const max = portalTotals[0]?.total || 1;
+
+    document.getElementById('detailSub').textContent = `${fmt(grandTotal)} ofert łącznie · ${portalTotals.length} portale`;
+
+    if (!portalTotals.length) {
+      document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Brak danych dla tej kategorii.</div>';
+      return;
+    }
+
+    document.getElementById('detailContent').innerHTML = portalTotals.map((p, i) => {
+      const pct = grandTotal ? (p.total / grandTotal * 100).toFixed(1) : '0';
+      const subItems = p.contributing.length > 1
+        ? `<div class="detail-cat-sub">${p.contributing.map(c => {
+            const subSlug = c.col.replace(PORTALS[p.key].prefix, '');
+            const subLabel = p.key === 'pracuj_pl' ? (PRACUJ_LABELS[subSlug] || slugToLabel(subSlug)) : slugToLabel(subSlug);
+            return `<span>${subLabel}: ${fmt(c.val)}</span>`;
+          }).join(' · ')}</div>`
+        : '';
+      return `<div class="detail-cat-row">
+        <span class="detail-cat-rank">${i + 1}</span>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:${p.color};flex-shrink:0;display:inline-block"></span>
+            <span class="detail-cat-name">${p.label}</span>
+            <span style="font-size:11px;color:var(--text-faint);font-family:var(--mono)">${pct}%</span>
+          </div>
+          ${subItems}
+        </div>
+        <span class="detail-cat-num">${fmt(p.total)}</span>
+        <div class="detail-cat-bar"><i style="width:${(p.total/max*100).toFixed(1)}%;background:${p.color}"></i></div>
+      </div>`;
+    }).join('');
+  } catch(err) {
+    document.getElementById('detailSub').textContent = 'Błąd';
+    document.getElementById('detailContent').innerHTML = `<div class="detail-cats-loading" style="color:#ff4d6a">${err.message}</div>`;
+  }
+}
+
+/* ================================================================
    INIT
    ================================================================ */
 function renderAll() {
@@ -833,9 +992,15 @@ function navigateToPortal(key) {
 
 window.addEventListener('popstate', () => {
   const hash = location.hash.slice(1);
-  if (hash && PORTALS[hash]) renderDetail(hash);
+  if (hash.startsWith('cat/')) renderCategoryDetail(hash.slice(4));
+  else if (hash && PORTALS[hash]) renderDetail(hash);
   else showMain();
 });
+
+function navigateToCategory(slug) {
+  history.pushState({ cat: slug }, '', '#cat/' + slug);
+  renderCategoryDetail(slug);
+}
 
 function slugToLabel(slug) {
   return slug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
