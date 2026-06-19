@@ -185,6 +185,34 @@ footer { margin: 48px 0 36px; padding-top: 24px; border-top: 1px solid var(--bor
 footer a { color: var(--text-dim); text-decoration: none; border-bottom: 1px solid var(--border-strong); transition: color 150ms ease; }
 footer a:hover { color: var(--accent); }
 
+/* ============ Detail view ============ */
+.portal-card { cursor: pointer; }
+#detailView { display: none; }
+#detailView.active { display: block; }
+#mainView.hidden { display: none; }
+.detail-back {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--text-dim);
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 99px;
+  padding: 7px 16px; cursor: pointer; transition: all 150ms ease; margin-bottom: 28px;
+}
+.detail-back:hover { color: var(--text); border-color: var(--border-strong); }
+.detail-portal-header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+.detail-portal-logo {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+  display: grid; place-items: center; font-weight: 800; font-size: 17px; color: #0a0a0f;
+}
+.detail-portal-title { font-size: 22px; font-weight: 700; }
+.detail-portal-sub { font-size: 13px; color: var(--text-faint); margin-top: 2px; font-family: var(--mono); }
+.detail-cats-loading { padding: 40px; text-align: center; color: var(--text-faint); }
+.detail-cat-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.detail-cat-row:last-child { border-bottom: none; }
+.detail-cat-rank { font-family: var(--mono); font-size: 11px; color: var(--text-faint); width: 22px; flex-shrink: 0; text-align: right; }
+.detail-cat-name { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detail-cat-num { font-family: var(--mono); font-size: 13.5px; font-weight: 700; flex-shrink: 0; width: 80px; text-align: right; }
+.detail-cat-bar { flex-shrink: 0; width: 140px; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.detail-cat-bar i { display: block; height: 100%; border-radius: 3px; transition: width 600ms cubic-bezier(.2,.8,.2,1); }
+
 /* ============ Skeleton & states ============ */
 .skeleton { position: relative; overflow: hidden; background: rgba(255,255,255,0.05); border-radius: 8px; }
 .skeleton::after {
@@ -231,6 +259,7 @@ footer a:hover { color: var(--accent); }
   </div>
 </header>
 
+<div id="mainView">
 <main class="wrap">
 
   <!-- 1. HERO -->
@@ -301,6 +330,24 @@ footer a:hover { color: var(--accent); }
   </footer>
 
 </main>
+</div><!-- #mainView -->
+
+<div id="detailView">
+  <div class="wrap" style="padding-top:32px;padding-bottom:64px">
+    <button class="detail-back" onclick="showMain()">← Powrót do raportu</button>
+    <div class="detail-portal-header">
+      <div class="detail-portal-logo" id="detailLogo"></div>
+      <div>
+        <div class="detail-portal-title" id="detailTitle"></div>
+        <div class="detail-portal-sub" id="detailSub"></div>
+      </div>
+    </div>
+    <div class="section-title">Kategorie <small>liczba ofert wg kategorii · najnowsze dane</small></div>
+    <div class="card card-pad" id="detailContent">
+      <div class="detail-cats-loading">Ładowanie kategorii…</div>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ================================================================
@@ -319,10 +366,31 @@ const CONFIG = {
    (te same slugi używają workflow n8n B i D: kolumna = "meta_" + slug)
    ================================================================ */
 const PORTALS = {
-  pracuj_pl:   { label: 'pracuj.pl',      baseline: 65000, color: '#f59e0b' },
-  olx:         { label: 'OLX Praca',      baseline: 50000, color: '#8b5cf6' },
-  justjoin:    { label: 'justjoin.it',    baseline: 12000, color: '#ec4899' },
-  rocketjobs:  { label: 'rocketjobs.pl',  baseline: 8000,  color: '#f43f5e' },
+  pracuj_pl:   { label: 'pracuj.pl',      baseline: 65000, color: '#f59e0b', rawGid: '162499066',  prefix: 'pracuj_' },
+  olx:         { label: 'OLX Praca',      baseline: 50000, color: '#8b5cf6', rawGid: '1876119358', prefix: 'olx_' },
+  justjoin:    { label: 'justjoin.it',    baseline: 12000, color: '#ec4899', rawGid: '242524000',  prefix: 'justjoin_' },
+  rocketjobs:  { label: 'rocketjobs.pl',  baseline: 8000,  color: '#f43f5e', rawGid: '1860156497', prefix: 'rocketjobs_' },
+};
+
+const PRACUJ_LABELS = {
+  administracja_biurowa:'Administracja biurowa', badania_rozwoj:'Badania i Rozwój',
+  bankowosc:'Bankowość', bhp_ochrona_srodowiska:'BHP / Ochrona środowiska',
+  budownictwo:'Budownictwo', call_center:'Call Center',
+  edukacja_szkolenia:'Edukacja i Szkolenia', finanse_ekonomia:'Finanse i Ekonomia',
+  franczyza_wlasny_biznes:'Franczyza / Własny biznes',
+  hotelarstwo_gastronomia_turystyka:'Hotelarstwo / Gastronomia / Turystyka',
+  human_resources:'Human Resources', inne:'Inne',
+  internet_ecommerce:'Internet / E-commerce', inzynieria:'Inżynieria',
+  it_administracja:'IT — Administracja', it_rozwoj_oprogramowania:'IT — Rozwój oprogramowania',
+  lancuch_dostaw:'Łańcuch dostaw', marketing:'Marketing',
+  media_sztuka_rozrywka:'Media / Sztuka / Rozrywka', nieruchomosci:'Nieruchomości',
+  obsluga_klienta:'Obsługa klienta', praca_fizyczna:'Praca fizyczna', prawo:'Prawo',
+  produkcja:'Produkcja', public_relations:'Public Relations',
+  reklama_grafika:'Reklama / Grafika', sektor_publiczny:'Sektor publiczny',
+  sprzedaz:'Sprzedaż', transport_logistyka:'Transport i Logistyka',
+  ubezpieczenia:'Ubezpieczenia', zakupy:'Zakupy', kontrola_jakosci:'Kontrola jakości',
+  zdrowie_uroda_rekreacja:'Zdrowie / Uroda / Rekreacja', energetyka:'Energetyka',
+  doradztwo_konsulting:'Doradztwo i Konsulting',
 };
 
 const CATEGORIES = {
@@ -587,6 +655,7 @@ function renderPortals() {
         <div class="portal-trend ${trendCls}">${arrow} ${wow === null ? '–' : fmtPct(wow)}</div>
       </div>
       <div class="portal-spark">${sparklineSVG(series.slice(-7), { width: 200, height: 34, color: meta.color })}</div>`;
+    card.addEventListener('click', () => navigateToPortal(key));
     grid.appendChild(card);
     countUp(card.querySelector('.portal-num'), val, 1100);
   }
@@ -747,6 +816,100 @@ async function loadData() {
   renderAll();
 }
 
+/* ================================================================
+   ROUTING — hash-based SPA navigation
+   ================================================================ */
+function showMain() {
+  history.pushState({}, '', location.pathname);
+  document.getElementById('mainView').classList.remove('hidden');
+  document.getElementById('detailView').classList.remove('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function navigateToPortal(key) {
+  history.pushState({ portal: key }, '', '#' + key);
+  renderDetail(key);
+}
+
+window.addEventListener('popstate', () => {
+  const hash = location.hash.slice(1);
+  if (hash && PORTALS[hash]) renderDetail(hash);
+  else showMain();
+});
+
+function slugToLabel(slug) {
+  return slug.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+async function renderDetail(key) {
+  const meta = PORTALS[key];
+  if (!meta) return;
+
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('detailView').classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  const initials = meta.label.replace(/\..*$/, '').slice(0, 2).toUpperCase();
+  document.getElementById('detailLogo').textContent = initials;
+  document.getElementById('detailLogo').style.background = meta.color;
+  document.getElementById('detailTitle').textContent = meta.label;
+  document.getElementById('detailSub').textContent = 'Ładowanie danych…';
+  document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie kategorii…</div>';
+
+  let rows;
+  try {
+    const res = await fetch(csvUrl(meta.rawGid));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const allRows = parseCSV(await res.text());
+    if (!allRows.length) throw new Error('Brak danych');
+
+    // pick the latest row by date/datetime column
+    allRows.sort((a, b) => {
+      const da = a.datetime || a.date || '';
+      const db = b.datetime || b.date || '';
+      return da < db ? 1 : -1;
+    });
+    const latest = allRows[0];
+    const latestDate = latest.date || latest.datetime || '';
+
+    const num = v => { const n = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
+
+    rows = Object.entries(latest)
+      .filter(([col]) => col.startsWith(meta.prefix) && col !== meta.prefix + 'total')
+      .map(([col, val]) => {
+        const slug = col.slice(meta.prefix.length);
+        const label = key === 'pracuj_pl'
+          ? (PRACUJ_LABELS[slug] || slugToLabel(slug))
+          : slugToLabel(slug);
+        return { slug, label, count: num(val) };
+      })
+      .filter(r => r.count > 0)
+      .sort((a, b) => b.count - a.count);
+
+    const total = rows.reduce((s, r) => s + r.count, 0);
+    document.getElementById('detailSub').textContent =
+      `${fmt(total)} ofert łącznie · dane z ${latestDate}`;
+
+    if (!rows.length) throw new Error('Brak kategorii');
+
+    const max = rows[0].count;
+    document.getElementById('detailContent').innerHTML = rows.map((r, i) => `
+      <div class="detail-cat-row">
+        <span class="detail-cat-rank">${i + 1}</span>
+        <span class="detail-cat-name">${r.label}</span>
+        <span class="detail-cat-num">${fmt(r.count)}</span>
+        <div class="detail-cat-bar"><i style="width:${(r.count / max * 100).toFixed(1)}%;background:${meta.color}"></i></div>
+      </div>`).join('');
+  } catch (err) {
+    document.getElementById('detailSub').textContent = 'Błąd ładowania danych';
+    document.getElementById('detailContent').innerHTML =
+      `<div class="detail-cats-loading" style="color:#ff4d6a">Nie udało się załadować kategorii.<br><small>${err.message}</small></div>`;
+  }
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
 loadData();
 if (!CONFIG.USE_MOCK_DATA) setInterval(loadData, CONFIG.REFRESH_INTERVAL_MS);
 </script>
