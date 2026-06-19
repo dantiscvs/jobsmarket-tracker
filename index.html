@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polish Job Market Tracker — HireAds.pl</title>
+<meta name="description" content="Liczba aktywnych ofert pracy w Polsce, aktualizowana codziennie. Dane z 4 portali pracy. Projekt HireAds.pl">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --bg-elevated: #101019;
+  --card: rgba(255,255,255,0.03);
+  --card-hover: rgba(255,255,255,0.05);
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.14);
+  --text: #f2f3f7;
+  --text-dim: #9ca0ad;
+  --text-faint: #5d6170;
+  --accent: #3b82f6;
+  --accent-soft: rgba(59,130,246,0.12);
+  --green: #00ff88;
+  --green-soft: rgba(0,255,136,0.10);
+  --red: #ff4d6a;
+  --red-soft: rgba(255,77,106,0.10);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59,130,246,0.13), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,255,136,0.05), transparent);
+  background-attachment: fixed;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+/* ============ Header ============ */
+header {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(10,10,15,0.72);
+  border-bottom: 1px solid var(--border);
+}
+.header-inner { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.logo-mark {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #7c3aed);
+  display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff;
+}
+.logo small { color: var(--text-faint); font-weight: 500; font-size: 12px; }
+.live-badge {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 600; color: var(--text-dim);
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 99px;
+  background: var(--card);
+}
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(0,255,136,0.5); } 50% { box-shadow: 0 0 0 5px rgba(0,255,136,0); } }
+
+/* ============ Hero ============ */
+.hero { padding: 64px 0 36px; text-align: center; }
+.hero-label {
+  font-size: 13px; font-weight: 600; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 16px;
+}
+.hero-number {
+  font-family: var(--mono);
+  font-size: clamp(56px, 11vw, 104px);
+  font-weight: 700; line-height: 1; letter-spacing: -0.03em;
+  background: linear-gradient(180deg, #fff 30%, #a8b3cf);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  font-variant-numeric: tabular-nums;
+  min-height: 1em;
+}
+.hero-meta { margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; color: var(--text-dim); font-size: 13px; }
+.hero-meta .sep { color: var(--text-faint); }
+.hero-sources {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft); color: #93bbfd;
+  padding: 4px 10px; border-radius: 99px; font-weight: 600; font-size: 12px;
+}
+
+/* ============ Cards ============ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.card:hover { border-color: var(--border-strong); }
+.card-pad { padding: 22px; }
+.section { margin: 28px 0; }
+.section-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 14px; display: flex; align-items: baseline; gap: 10px; }
+.section-title small { font-size: 12px; font-weight: 500; color: var(--text-faint); }
+
+/* ============ Trend 30d ============ */
+.trend-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 8px; }
+.trend-title { font-size: 13px; font-weight: 600; color: var(--text-dim); }
+.delta-chips { display: flex; gap: 8px; }
+.delta-chip {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  padding: 5px 10px; border-radius: 8px;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.delta-chip span.lbl { font-family: var(--font); font-weight: 600; color: var(--text-dim); }
+.delta-up { background: var(--green-soft); color: var(--green); }
+.delta-down { background: var(--red-soft); color: var(--red); }
+.delta-flat { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+#spark30 { width: 100%; height: 88px; display: block; }
+
+/* ============ Portal grid ============ */
+.portal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 12px; }
+.portal-card { padding: 16px; cursor: default; }
+.portal-card:hover { background: var(--card-hover); transform: translateY(-1px); }
+.portal-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.portal-logo {
+  width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+  display: grid; place-items: center; font-weight: 800; font-size: 14px; color: #0a0a0f;
+}
+.portal-name { font-weight: 600; font-size: 13.5px; }
+.portal-share { font-size: 11.5px; color: var(--text-faint); font-family: var(--mono); }
+.portal-num-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.portal-num { font-family: var(--mono); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.portal-trend { font-family: var(--mono); font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 3px; }
+.portal-spark { margin-top: 10px; height: 34px; }
+.portal-spark svg { width: 100%; height: 34px; display: block; }
+
+/* ============ Main chart ============ */
+.chart-toggles { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.toggle-chip {
+  font-family: var(--font); font-size: 12.5px; font-weight: 600;
+  padding: 6px 13px; border-radius: 99px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--text-dim);
+  display: inline-flex; align-items: center; gap: 7px;
+  transition: all 150ms ease;
+}
+.toggle-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.toggle-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: 0.4; transition: opacity 150ms ease; }
+.toggle-chip.active { color: var(--text); background: rgba(255,255,255,0.05); border-color: var(--border-strong); }
+.toggle-chip.active .dot { opacity: 1; }
+.chart-box { position: relative; height: 380px; }
+
+/* ============ Category table ============ */
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead th {
+  text-align: right; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-faint); padding: 10px 14px;
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap;
+  transition: color 150ms ease;
+}
+thead th:hover { color: var(--text-dim); }
+thead th.sorted { color: var(--accent); }
+thead th:first-child, td:first-child { text-align: left; }
+tbody td { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr { transition: background 150ms ease; }
+tbody tr:hover { background: rgba(255,255,255,0.03); }
+tbody tr:last-child td { border-bottom: none; }
+.cat-name { font-weight: 600; white-space: nowrap; }
+.cat-rank { color: var(--text-faint); font-family: var(--mono); font-size: 11px; margin-right: 10px; display: inline-block; width: 18px; }
+.num { font-family: var(--mono); font-weight: 600; }
+.chg-up { color: var(--green); } .chg-down { color: var(--red); } .chg-flat { color: var(--text-faint); }
+.bar-cell { width: 130px; min-width: 90px; }
+.mini-bar { height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.mini-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), #7c9ff8); transition: width 600ms cubic-bezier(.2,.8,.2,1); }
+
+/* ============ Footer ============ */
+footer { margin: 48px 0 36px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-faint); font-size: 12.5px; line-height: 1.7; text-align: center; }
+footer a { color: var(--text-dim); text-decoration: none; border-bottom: 1px solid var(--border-strong); transition: color 150ms ease; }
+footer a:hover { color: var(--accent); }
+
+/* ============ Skeleton & states ============ */
+.skeleton { position: relative; overflow: hidden; background: rgba(255,255,255,0.05); border-radius: 8px; }
+.skeleton::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.notice {
+  display: none; margin: 14px auto 0; max-width: 620px;
+  background: var(--red-soft); border: 1px solid rgba(255,77,106,0.25); color: #ffb3c0;
+  padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; text-align: center;
+}
+.notice.show { display: block; }
+.mock-tag {
+  display: none; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  color: #ffd166; background: rgba(255,209,102,0.1); border: 1px solid rgba(255,209,102,0.25);
+  padding: 3px 9px; border-radius: 6px; text-transform: uppercase;
+}
+.mock-tag.show { display: inline-block; }
+
+@media (max-width: 640px) {
+  .hero { padding: 44px 0 28px; }
+  .card-pad { padding: 16px; }
+  .chart-box { height: 300px; }
+  thead th, tbody td { padding: 9px 9px; }
+  .bar-cell { display: none; }
+  .header-inner .logo small { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap header-inner">
+    <div class="logo">
+      <div class="logo-mark">JT</div>
+      <div>Polish Job Market Tracker <small>by HireAds.pl</small></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="mock-tag" id="mockTag">Mock data</span>
+      <div class="live-badge"><span class="live-dot"></span><span id="liveLabel">Codzienne dane</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 1. HERO -->
+  <section class="hero">
+    <div class="hero-label">Aktywne oferty pracy w Polsce</div>
+    <div class="hero-number" id="heroNumber"><span class="skeleton" style="display:inline-block;width:5em;height:0.9em"></span></div>
+    <div class="hero-meta">
+      <span id="lastUpdated">Ładowanie…</span>
+      <span class="sep">·</span>
+      <span class="hero-sources">⛁ Dane z 4 portali pracy</span>
+    </div>
+    <div class="notice" id="errorNotice">⚠ Dane tymczasowo niedostępne — wyświetlamy dane przykładowe.</div>
+  </section>
+
+  <!-- 2. SPARKLINE 30 DNI -->
+  <section class="section">
+    <div class="card card-pad">
+      <div class="trend-head">
+        <div>
+          <div class="trend-title">Trend — ostatnie 30 dni</div>
+        </div>
+        <div class="delta-chips" id="deltaChips"></div>
+      </div>
+      <svg id="spark30" preserveAspectRatio="none"></svg>
+    </div>
+  </section>
+
+  <!-- 3. PORTAL BREAKDOWN -->
+  <section class="section">
+    <div class="section-title">Portale <small>liczba ofert · udział w rynku · trend 7 dni</small></div>
+    <div class="portal-grid" id="portalGrid"></div>
+  </section>
+
+  <!-- 5. MAIN TRENDLINE -->
+  <section class="section">
+    <div class="section-title">Trend rynku <small>ostatnie 90 dni</small></div>
+    <div class="card card-pad">
+      <div class="chart-toggles" id="chartToggles"></div>
+      <div class="chart-box"><canvas id="mainChart"></canvas></div>
+    </div>
+  </section>
+
+  <!-- 4. KATEGORIE -->
+  <section class="section">
+    <div class="section-title">Kategorie zawodowe <small>25 meta-kategorii · kliknij nagłówek aby sortować</small></div>
+    <div class="card">
+      <div class="table-scroll">
+        <table id="catTable">
+          <thead>
+            <tr>
+              <th data-sort="name">Kategoria</th>
+              <th data-sort="today" class="sorted">Oferty dziś ▾</th>
+              <th data-sort="delta">Δ tydzień</th>
+              <th data-sort="deltaPct">Δ %</th>
+              <th class="bar-cell"></th>
+            </tr>
+          </thead>
+          <tbody id="catBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. FOOTER -->
+  <footer>
+    Dane zbierane codziennie automatycznie. Źródło: pracuj.pl, justjoin.it, rocketjobs.pl, theprotocol.it, olx.pl, gowork.pl, indeed.com.<br>
+    Projekt: <a href="https://hireads.pl" target="_blank" rel="noopener">HireAds.pl</a> — performance marketing rekrutacyjny.
+  </footer>
+
+</main>
+
+<script>
+/* ================================================================
+   KONFIGURACJA
+   ================================================================ */
+const CONFIG = {
+  SHEET_ID: '1-Q8w_ou8B5xN1O2PaiMKMYrIOIJERNKnxfZTaEiS4UE',
+  DAILY_TOTALS_GID: '0',                    // daily_totals — jeszcze nie zasilany (Workflow D)
+  PORTAL_TOTALS_GID: '1654187043',          // portal_totals
+  USE_MOCK_DATA: false,
+  REFRESH_INTERVAL_MS: 3600000,
+};
+
+/* ================================================================
+   STAŁE — kanoniczne slugi zgodne z kolumnami Google Sheets
+   (te same slugi używają workflow n8n B i D: kolumna = "meta_" + slug)
+   ================================================================ */
+const PORTALS = {
+  pracuj_pl:   { label: 'pracuj.pl',      baseline: 65000, color: '#f59e0b' },
+  olx:         { label: 'OLX Praca',      baseline: 50000, color: '#8b5cf6' },
+  justjoin:    { label: 'justjoin.it',    baseline: 12000, color: '#ec4899' },
+  rocketjobs:  { label: 'rocketjobs.pl',  baseline: 8000,  color: '#f43f5e' },
+};
+
+const CATEGORIES = {
+  sprzedaz_zakupy:        { label: 'Sprzedaż i Zakupy',                 baseline: 19328 },
+  transport_logistyka:    { label: 'Pracownicy Transportu i Logistyki', baseline: 18090 },
+  it:                     { label: 'IT',                                baseline: 14500 },
+  obsluga_klienta:        { label: 'Obsługa Klienta',                   baseline: 12000 },
+  fizyczni:               { label: 'Pracownicy Fizyczni',               baseline: 10500 },
+  produkcja:              { label: 'Pracownicy Produkcji',              baseline: 9800 },
+  finanse_ksiegowosc:     { label: 'Finanse i Księgowość',              baseline: 8200 },
+  inzynierowie:           { label: 'Inżynierowie',                      baseline: 7200 },
+  marketing_design:       { label: 'Marketingowcy i Designerzy',        baseline: 6800 },
+  hr_rekrutacja:          { label: 'HR i rekrutacja',                   baseline: 5100 },
+  administracja:          { label: 'Pracownicy Administracji',          baseline: 5000 },
+  budownictwo:            { label: 'Budownictwo i prace manualne',      baseline: 4800 },
+  call_center:            { label: 'Call Center',                       baseline: 4200 },
+  gastronomia_hotelarstwo:{ label: 'Pracownicy Gastronomii i Hotelarstwa', baseline: 3900 },
+  personel_medyczny:      { label: 'Personel Medyczny',                 baseline: 3500 },
+  magazyn:                { label: 'Załoga Magazynu',                   baseline: 3200 },
+  edukacja:               { label: 'Nauczanie i Edukacja',              baseline: 2800 },
+  sklepy:                 { label: 'Pracownicy sklepów',                baseline: 2600 },
+  biurowi:                { label: 'Pracownicy Biurowi',                baseline: 2400 },
+  montaz_serwis:          { label: 'Montażyści i Serwisanci',           baseline: 2200 },
+  opieka:                 { label: 'Opieka',                            baseline: 1800 },
+  beauty:                 { label: 'Branża Beauty',                     baseline: 1500 },
+  ochrona:                { label: 'Pracownicy Ochrony',                baseline: 1400 },
+  architekci_geodeci:     { label: 'Architekci i Geodeci',              baseline: 1200 },
+  rolnictwo:              { label: 'Rolnictwo i ogrodnictwo',           baseline: 800 },
+  praktykanci:            { label: 'Praktykanci i Stażyści',            baseline: 600 },
+};
+
+const DAYS = 90;
+
+/* ================================================================
+   NARZĘDZIA
+   ================================================================ */
+const fmt = n => Math.round(n).toLocaleString('pl-PL');
+const fmtPct = p => (p > 0 ? '+' : '') + p.toFixed(1).replace('.', ',') + '%';
+const fmtDelta = d => (d > 0 ? '+' : (d < 0 ? '−' : '')) + fmt(Math.abs(d));
+
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function isoDate(d) { return d.toLocaleDateString('sv-SE'); }
+
+/* ================================================================
+   MOCK DATA — 90 dni random walk ±2%/dzień + weekendowy dołek -15%
+   ================================================================ */
+function generateMockData() {
+  const rnd = mulberry32(20260611);
+  const dates = [];
+  const today = new Date();
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(d);
+  }
+  const walk = (baseline) => {
+    let level = baseline * (0.93 + rnd() * 0.06);
+    return dates.map(d => {
+      level *= 1 + (rnd() - 0.485) * 0.04;            // ±2% z lekkim dryfem w górę
+      const dow = d.getDay();
+      const weekend = (dow === 0 || dow === 6) ? 0.85 : 1; // sob/nd -15%
+      return Math.round(level * weekend);
+    });
+  };
+  const portals = {}, categories = {};
+  for (const key of Object.keys(PORTALS)) portals[key] = walk(PORTALS[key].baseline);
+  for (const key of Object.keys(CATEGORIES)) categories[key] = walk(CATEGORIES[key].baseline);
+  const totals = dates.map((_, i) =>
+    Object.values(portals).reduce((s, arr) => s + arr[i], 0)
+  );
+  return { dates: dates.map(isoDate), portals, categories, totals };
+}
+
+/* ================================================================
+   GOOGLE SHEETS — CSV fetch + parse
+   ================================================================ */
+function csvUrl(gid) {
+  return `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/export?format=csv&gid=${gid}`;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.length);
+  if (lines.length < 2) return [];
+  const split = line => {
+    // obsługa pól w cudzysłowach (nazwy z przecinkami)
+    const out = []; let cur = '', inQ = false;
+    for (const ch of line) {
+      if (ch === '"') inQ = !inQ;
+      else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out;
+  };
+  const headers = split(lines[0]).map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const cells = split(line);
+    const row = {};
+    headers.forEach((h, i) => row[h] = (cells[i] ?? '').trim());
+    return row;
+  });
+}
+
+async function fetchSheetData() {
+  // portal_totals jest wymagany; daily_totals opcjonalny (Workflow D jeszcze nie aktywny)
+  const portalRes = await fetch(csvUrl(CONFIG.PORTAL_TOTALS_GID));
+  if (!portalRes.ok) throw new Error('Sheets HTTP error ' + portalRes.status);
+  const portalRows = parseCSV(await portalRes.text());
+  if (!portalRows.length) throw new Error('No portal data');
+
+  let dailyRows = [];
+  try {
+    const dailyRes = await fetch(csvUrl(CONFIG.DAILY_TOTALS_GID));
+    if (dailyRes.ok) dailyRows = parseCSV(await dailyRes.text());
+  } catch(e) { /* daily_totals niedostępny — ignorujemy */ }
+
+  const num = v => { const n = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
+
+  // Grupuj portal_totals po dacie — bierz ostatni run z danego dnia
+  const byDate = {};
+  for (const r of portalRows) {
+    if (!r.date) continue;
+    byDate[r.date] = byDate[r.date] || {};
+    for (const key of Object.keys(PORTALS)) byDate[r.date][key] = num(r[key]);
+    // total z pre-wyliczonej kolumny Workflow E
+    if (r.total) byDate[r.date]._total = num(r.total);
+  }
+  const dailyByDate = {};
+  for (const r of dailyRows) if (r.date) dailyByDate[r.date] = r;
+
+  const dates = Object.keys(byDate).sort().slice(-DAYS);
+  if (!dates.length) throw new Error('No portal data');
+
+  const portals = {}, categories = {};
+  for (const key of Object.keys(PORTALS)) portals[key] = dates.map(d => byDate[d][key] || 0);
+  for (const slug of Object.keys(CATEGORIES)) {
+    categories[slug] = dates.map(d => num(dailyByDate[d]?.['meta_' + slug]));
+  }
+  const totals = dates.map((d, i) => {
+    return byDate[d]._total || Object.values(portals).reduce((s, arr) => s + arr[i], 0);
+  });
+  return { dates, portals, categories, totals };
+}
+
+/* ================================================================
+   RENDER — komponenty
+   ================================================================ */
+let state = { data: null, isMock: false, sort: { key: 'today', dir: -1 }, chart: null };
+
+function pctChange(arr, lag) {
+  const i = arr.length - 1;
+  if (i - lag < 0 || !arr[i - lag]) return null;
+  return ((arr[i] - arr[i - lag]) / arr[i - lag]) * 100;
+}
+
+function countUp(el, target, duration = 1300) {
+  // rAF nie odpala w ukrytej karcie — wtedy ustaw wartość od razu, bez animacji
+  if (document.hidden) { el.textContent = fmt(target); return; }
+  const start = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  function frame(now) {
+    const p = Math.min((now - start) / duration, 1);
+    el.textContent = fmt(target * ease(p));
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function sparklineSVG(values, { width = 200, height = 34, strokeW = 1.8, color, fill = true } = {}) {
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const pad = strokeW;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * width;
+    const y = pad + (1 - (v - min) / range) * (height - pad * 2);
+    return [x, y];
+  });
+  const line = pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+  const up = values[values.length - 1] >= values[0];
+  const c = color || (up ? 'var(--green)' : 'var(--red)');
+  const gid = 'g' + Math.random().toString(36).slice(2, 8);
+  const area = fill
+    ? `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+         <stop offset="0%" stop-color="${c}" stop-opacity="0.22"/>
+         <stop offset="100%" stop-color="${c}" stop-opacity="0"/>
+       </linearGradient></defs>
+       <polygon points="0,${height} ${line} ${width},${height}" fill="url(#${gid})"/>`
+    : '';
+  return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    ${area}<polyline points="${line}" fill="none" stroke="${c}" stroke-width="${strokeW}"
+    stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function deltaChip(label, pct) {
+  if (pct === null) return '';
+  const cls = pct > 0.05 ? 'delta-up' : pct < -0.05 ? 'delta-down' : 'delta-flat';
+  const arrow = pct > 0.05 ? '↑' : pct < -0.05 ? '↓' : '→';
+  return `<span class="delta-chip ${cls}"><span class="lbl">${label}</span> ${arrow} ${fmtPct(pct)}</span>`;
+}
+
+function renderHero() {
+  const { totals, dates } = state.data;
+  const total = totals[totals.length - 1];
+  countUp(document.getElementById('heroNumber'), total);
+
+  const last = dates[dates.length - 1];
+  const today = isoDate(new Date());
+  const when = last === today
+    ? 'dziś, 06:00'
+    : new Date(last + 'T06:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'long' }) + ', 06:00';
+  document.getElementById('lastUpdated').textContent = `Ostatnia aktualizacja: ${when}`;
+}
+
+function renderTrend30() {
+  const { totals } = state.data;
+  const last30 = totals.slice(-30);
+  const svgHost = document.getElementById('spark30');
+  const up = last30[last30.length - 1] >= last30[0];
+  const inner = sparklineSVG(last30, { width: 600, height: 88, strokeW: 2.2, color: up ? '#00ff88' : '#ff4d6a' });
+  svgHost.outerHTML = `<div id="spark30" style="height:88px">${inner}</div>`;
+  document.getElementById('deltaChips').innerHTML =
+    deltaChip('7D', pctChange(totals, 7)) + deltaChip('30D', pctChange(totals, 30));
+}
+
+function renderPortals() {
+  const { portals, totals } = state.data;
+  const total = totals[totals.length - 1];
+  const grid = document.getElementById('portalGrid');
+  grid.innerHTML = '';
+  const entries = Object.entries(PORTALS)
+    .map(([key, meta]) => ({ key, meta, series: portals[key] }))
+    .sort((a, b) => (b.series.at(-1) || 0) - (a.series.at(-1) || 0));
+
+  for (const { key, meta, series } of entries) {
+    const val = series.at(-1) || 0;
+    const share = total ? (val / total) * 100 : 0;
+    const wow = pctChange(series, 7);
+    const trendCls = wow === null || Math.abs(wow) < 0.05 ? 'chg-flat' : wow > 0 ? 'chg-up' : 'chg-down';
+    const arrow = wow === null ? '' : wow > 0.05 ? '↑' : wow < -0.05 ? '↓' : '→';
+    const initials = meta.label.replace(/\..*$/, '').slice(0, 2).toUpperCase();
+
+    const card = document.createElement('div');
+    card.className = 'card portal-card';
+    card.innerHTML = `
+      <div class="portal-top">
+        <div class="portal-logo" style="background:${meta.color}">${initials}</div>
+        <div>
+          <div class="portal-name">${meta.label}</div>
+          <div class="portal-share">${share.toFixed(1).replace('.', ',')}% rynku</div>
+        </div>
+      </div>
+      <div class="portal-num-row">
+        <div class="portal-num" data-count="${val}">0</div>
+        <div class="portal-trend ${trendCls}">${arrow} ${wow === null ? '–' : fmtPct(wow)}</div>
+      </div>
+      <div class="portal-spark">${sparklineSVG(series.slice(-7), { width: 200, height: 34, color: meta.color })}</div>`;
+    grid.appendChild(card);
+    countUp(card.querySelector('.portal-num'), val, 1100);
+  }
+}
+
+function renderCategories() {
+  const { categories } = state.data;
+  const rows = Object.entries(CATEGORIES).map(([slug, meta]) => {
+    const series = categories[slug] || [];
+    const today = series.at(-1) || 0;
+    const weekAgo = series.at(-8) || 0;
+    const delta = today - weekAgo;
+    const deltaPct = weekAgo ? (delta / weekAgo) * 100 : 0;
+    return { slug, name: meta.label, today, delta, deltaPct };
+  });
+
+  const { key, dir } = state.sort;
+  rows.sort((a, b) => {
+    const va = a[key], vb = b[key];
+    return (typeof va === 'string' ? va.localeCompare(vb, 'pl') : va - vb) * dir;
+  });
+  const maxToday = Math.max(...rows.map(r => r.today), 1);
+
+  document.getElementById('catBody').innerHTML = rows.map((r, i) => {
+    const cls = Math.abs(r.deltaPct) < 0.05 ? 'chg-flat' : r.delta > 0 ? 'chg-up' : 'chg-down';
+    return `<tr>
+      <td class="cat-name"><span class="cat-rank">${String(i + 1).padStart(2, '0')}</span>${r.name}</td>
+      <td class="num">${fmt(r.today)}</td>
+      <td class="num ${cls}">${fmtDelta(r.delta)}</td>
+      <td class="num ${cls}">${fmtPct(r.deltaPct)}</td>
+      <td class="bar-cell"><div class="mini-bar"><i style="width:${(r.today / maxToday * 100).toFixed(1)}%"></i></div></td>
+    </tr>`;
+  }).join('');
+
+  document.querySelectorAll('#catTable thead th').forEach(th => {
+    const sortKey = th.dataset.sort;
+    th.classList.toggle('sorted', sortKey === key);
+    if (!sortKey) return;
+    const base = th.textContent.replace(/[ ▾▴]+$/, '');
+    th.textContent = sortKey === key ? base + (dir === -1 ? ' ▾' : ' ▴') : base;
+  });
+}
+
+document.querySelectorAll('#catTable thead th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (state.sort.key === k) state.sort.dir *= -1;
+    else state.sort = { key: k, dir: k === 'name' ? 1 : -1 };
+    renderCategories();
+  });
+});
+
+/* ================================================================
+   GŁÓWNY WYKRES — Chart.js, toggle serii
+   ================================================================ */
+function renderMainChart() {
+  const { dates, totals, portals } = state.data;
+  const labels = dates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
+
+  const datasets = [
+    {
+      id: '__total', label: 'Razem', data: totals,
+      borderColor: '#f2f3f7', backgroundColor: 'rgba(242,243,247,0.04)',
+      borderWidth: 2.5, fill: true, color: '#f2f3f7',
+    },
+    ...Object.entries(PORTALS).map(([key, meta]) => ({
+      id: key, label: meta.label, data: portals[key],
+      borderColor: meta.color, borderWidth: 1.5, fill: false, color: meta.color,
+    })),
+  ];
+
+  if (state.chart) state.chart.destroy();
+  state.chart = new Chart(document.getElementById('mainChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(d => ({
+        ...d, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: d.borderColor,
+        tension: 0.35,
+      })),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(16,16,25,0.95)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+          titleFont: { family: 'Inter', weight: '600' }, bodyFont: { family: 'JetBrains Mono', size: 12 },
+          padding: 12, cornerRadius: 10, boxPadding: 5,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#5d6170', maxTicksLimit: 10, font: { family: 'Inter', size: 11 } },
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#5d6170', font: { family: 'JetBrains Mono', size: 11 },
+            callback: v => v >= 1000 ? (v / 1000).toLocaleString('pl-PL') + ' tys.' : v,
+          },
+        },
+      },
+    },
+  });
+
+  const toggles = document.getElementById('chartToggles');
+  toggles.innerHTML = '';
+  datasets.forEach((d, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'toggle-chip active';
+    btn.style.color = d.color;
+    btn.innerHTML = `<span class="dot"></span><span style="color:var(--text)">${d.label}</span>`;
+    btn.addEventListener('click', () => {
+      const visible = state.chart.isDatasetVisible(i);
+      state.chart.setDatasetVisibility(i, !visible);
+      btn.classList.toggle('active', !visible);
+      state.chart.update();
+    });
+    toggles.appendChild(btn);
+  });
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
+function renderAll() {
+  renderHero();
+  renderTrend30();
+  renderPortals();
+  renderCategories();
+  renderMainChart();
+}
+
+async function loadData() {
+  const wantMock = CONFIG.USE_MOCK_DATA || CONFIG.SHEET_ID === 'MOCK' || CONFIG.SHEET_ID === 'YOUR_GOOGLE_SHEET_ID';
+  if (wantMock) {
+    state.data = generateMockData();
+    state.isMock = true;
+    document.getElementById('mockTag').classList.add('show');
+  } else {
+    try {
+      state.data = await fetchSheetData();
+      state.isMock = false;
+      document.getElementById('errorNotice').classList.remove('show');
+      document.getElementById('mockTag').classList.remove('show');
+    } catch (err) {
+      console.error('Sheets fetch failed, falling back to mock:', err);
+      state.data = generateMockData();
+      state.isMock = true;
+      document.getElementById('errorNotice').classList.add('show');
+      document.getElementById('mockTag').classList.add('show');
+    }
+  }
+  renderAll();
+}
+
+loadData();
+if (!CONFIG.USE_MOCK_DATA) setInterval(loadData, CONFIG.REFRESH_INTERVAL_MS);
+</script>
+</body>
+</html>
