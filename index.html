@@ -208,7 +208,7 @@ footer a:hover { color: var(--accent); }
 .detail-cat-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
 .detail-cat-row:last-child { border-bottom: none; }
 .detail-cat-rank { font-family: var(--mono); font-size: 11px; color: var(--text-faint); width: 22px; flex-shrink: 0; text-align: right; }
-.detail-cat-name { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.detail-cat-name { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; }
 .detail-cat-num { font-family: var(--mono); font-size: 13.5px; font-weight: 700; flex-shrink: 0; width: 80px; text-align: right; }
 .detail-cat-bar { flex-shrink: 0; width: 140px; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
 .detail-cat-bar i { display: block; height: 100%; border-radius: 3px; transition: width 600ms cubic-bezier(.2,.8,.2,1); }
@@ -243,7 +243,32 @@ footer a:hover { color: var(--accent); }
   thead th, tbody td { padding: 9px 9px; }
   .bar-cell { display: none; }
   .header-inner .logo small { display: none; }
+  .detail-cat-bar { display: none; }
+  .detail-cat-row { gap: 8px; padding: 8px 0; }
+  .detail-cat-name { font-size: 12px; }
+  .detail-cat-num { width: 55px; font-size: 12px; }
+  .detail-portal-title { font-size: 18px; }
 }
+
+/* ============ META badge ============ */
+.meta-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  padding: 2px 7px; border-radius: 5px; vertical-align: middle; margin-left: 6px;
+  background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.25);
+  display: inline-block; cursor: help;
+}
+.portal-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+  padding: 2px 7px; border-radius: 5px; vertical-align: middle; margin-left: 6px;
+  background: rgba(255,255,255,0.07); color: var(--text-dim); border: 1px solid var(--border);
+  display: inline-block;
+}
+
+/* ============ Metodologia view ============ */
+#metodologiaView { display: none; }
+#metodologiaView.active { display: block; }
+#metodologiaView h2 { color: var(--text); }
+#metodologiaView p { margin: 0; }
 </style>
 </head>
 <body>
@@ -306,7 +331,7 @@ footer a:hover { color: var(--accent); }
 
   <!-- 4. KATEGORIE -->
   <section class="section">
-    <div class="section-title">Kategorie zawodowe <small>25 meta-kategorii · kliknij nagłówek aby sortować</small></div>
+    <div class="section-title">Kategorie zawodowe <span class="meta-badge" title="Kategorie zagregowane z 4 portali przez nasz system klasyfikacji. Kliknij dowolny wiersz, aby zobaczyć podział na portale.">META</span><small> 29 kategorii · kliknij wiersz → podział na portale</small></div>
     <div class="card">
       <div class="table-scroll">
         <table id="catTable">
@@ -327,7 +352,9 @@ footer a:hover { color: var(--accent); }
 
   <!-- 6. FOOTER -->
   <footer>
-    Dane zbierane codziennie automatycznie. Źródło: pracuj.pl, justjoin.it, rocketjobs.pl, theprotocol.it, olx.pl, gowork.pl, indeed.com.<br>
+    Dane zbierane codziennie automatycznie. Źródło: pracuj.pl, justjoin.it, rocketjobs.pl, olx.pl.<br>
+    <a href="#metodologia" onclick="navigateToMetodologia()" style="color:var(--text-dim);text-decoration:none;border-bottom:1px solid var(--border-strong)">Metodologia i opis zbioru danych</a>
+    &nbsp;·&nbsp;
     Projekt: <a href="https://hireads.pl" target="_blank" rel="noopener">HireAds.pl</a> — performance marketing rekrutacyjny.
   </footer>
 
@@ -347,6 +374,54 @@ footer a:hover { color: var(--accent); }
     <div class="section-title">Kategorie <small>liczba ofert wg kategorii · najnowsze dane</small></div>
     <div class="card card-pad" id="detailContent">
       <div class="detail-cats-loading">Ładowanie kategorii…</div>
+    </div>
+  </div>
+</div>
+
+<div id="metodologiaView">
+  <div class="wrap" style="padding-top:32px;padding-bottom:80px;max-width:740px">
+    <button class="detail-back" onclick="showMain()">← Powrót do raportu</button>
+    <h1 style="font-size:26px;font-weight:800;margin-bottom:6px">Metodologia</h1>
+    <p style="color:var(--text-faint);font-size:14px;margin-bottom:40px">Jak zbieramy i przetwarzamy dane o polskim rynku pracy</p>
+
+    <div class="card card-pad" style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">1. Źródła danych</h2>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8">Dane zbieramy z 4 portali pracy: <strong>pracuj.pl</strong>, <strong>OLX Praca</strong>, <strong>JustJoin.it</strong> i <strong>RocketJobs.pl</strong>. Każdy portal jest odpytywany osobno, a wyniki przechowywane niezależnie w bazie (zakładki <em>raw_pracujpl</em>, <em>raw_olx</em>, <em>raw_justjoin</em>, <em>raw_rocketjobs</em>).</p>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8;margin-top:10px">Portale takie jak theprotocol.it, gowork.pl czy indeed.com są w fazie planowania i nie są jeszcze uwzględnione w obecnym zbiorze.</p>
+    </div>
+
+    <div class="card card-pad" style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">2. Częstotliwość zbierania danych</h2>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8">Dane są zbierane <strong>raz dziennie o godzinie 12:30</strong> czasu warszawskiego. Scraping jest realizowany przez automatyczne workflow n8n działające w chmurze. Każdy wiersz w bazie zawiera znacznik czasu (datetime) oraz unikalny identyfikator run_id.</p>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8;margin-top:10px">W planach jest zwiększenie częstotliwości do 5 razy dziennie (co ~4,5h), co pozwoli obserwować fluktuacje śróddzienne.</p>
+    </div>
+
+    <div class="card card-pad" style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">3. Fluktuacje liczby ofert w ciągu dnia</h2>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8">Liczba widocznych ogłoszeń nie jest stała — portale pracy rotują oferty w czasie rzeczywistym. Pracodawcy dodają i wygasają ogłoszenia przez całą dobę, a algorytmy portali mogą ukrywać duplikaty lub wstrzymywać widoczność przy osiągnięciu limitów.</p>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8;margin-top:10px">Zaobserwowane wzorce: liczba ofert jest zwykle <strong>wyższa w dni robocze</strong> (pon–pt) i spada o ok. 10–15% w weekendy. W ciągu dnia pik aktywności przypada na godziny poranne (8:00–12:00).</p>
+    </div>
+
+    <div class="card card-pad" style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">4. Agregacja do meta-kategorii</h2>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8">Każdy portal używa własnej taksonomii kategorii. Aby umożliwić porównanie między portalami, tworzymy <strong>29 meta-kategorii</strong> <span class="meta-badge">META</span> — nasz autorski system klasyfikacji.</p>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8;margin-top:10px">Mapowanie jest jednokierunkowe: każda kategoria portalu trafia do dokładnie jednej meta-kategorii. Kategorie o niejednoznacznym charakterze (np. "Nieruchomości", "Prawo") tworzą własne meta-kategorie. Kategorie takie jak "Franczyza/własna firma" lub "Praca za granicą" trafiają do grupy "Pozostałe".</p>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8;margin-top:10px">Specyfika portali IT (<strong>JustJoin.it</strong> i <strong>RocketJobs.pl</strong>) powoduje, że kategoria "IT" może wydawać się nieproporcjonalnie duża — jest to zgodne z rzeczywistością, ponieważ oba portale obsługują wyłącznie lub przede wszystkim oferty technologiczne.</p>
+    </div>
+
+    <div class="card card-pad" style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">5. CBOP — Centralna Baza Ofert Pracy</h2>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8"><strong>Pracuj.pl</strong> integruje oferty z Centralnej Bazy Ofert Pracy (CBOP) — rządowego portalu urzędów pracy. Oferty te są wyświetlane użytkownikom na pracuj.pl jako własne, dlatego uwzględniamy je w łącznej liczbie ofert pracuj.pl. Liczba ofert CBOP (~20 000) jest dostępna osobno w kolumnie <em>jobcenter_offers</em>.</p>
+    </div>
+
+    <div class="card card-pad" style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">6. Podwójne liczenie ofert</h2>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8">Ta sama oferta pracy może pojawiać się jednocześnie na kilku portalach. Nasz system <strong>nie deduplikuje</strong> ofert między portalami — sumujemy to, co każdy portal raportuje. Łączna liczba ofert w Polsce (ok. 200 000+) jest zatem prawdopodobnie wyższa niż rzeczywista liczba unikalnych stanowisk. Każdy portal jest niezależnym miernikiem aktywności rekrutacyjnej.</p>
+    </div>
+
+    <div class="card card-pad" style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px">7. Definicja "dziś" i opóźnienie danych</h2>
+      <p style="color:var(--text-dim);font-size:13.5px;line-height:1.8">Wartości wyświetlane jako "Oferty dziś" odnoszą się do <strong>ostatniego dostępnego snapshotu</strong>, który jest pobierany o 12:30. Dane meta-kategorii są aktualizowane raz dziennie. Dane dotyczące poszczególnych portali (dla podstron portali) mogą być z poprzedniego dnia jeśli workflow nie uruchomił się jeszcze danego dnia.</p>
     </div>
   </div>
 </div>
@@ -449,6 +524,17 @@ const RAW_COL_MAP = {
   rocketjobs_design:'marketing_design', rocketjobs_bi_data:'it',
   rocketjobs_praca_biurowa:'biurowi', rocketjobs_consulting:'finanse_ksiegowosc',
   rocketjobs_media:'marketing_design',
+  rocketjobs_nieruchomosci: 'nieruchomosci',
+  rocketjobs_prawo: 'prawo',
+  rocketjobs_inne: 'pozostale',
+  pracuj_nieruchomosci: 'nieruchomosci',
+  pracuj_prawo: 'prawo',
+  pracuj_inne: 'pozostale',
+  pracuj_franczyza_wlasny_biznes: 'pozostale',
+  olx_nieruchomosci: 'nieruchomosci',
+  olx_prawo: 'prawo',
+  olx_franczyza_wlasna_firma: 'pozostale',
+  olx_praca_za_granica: 'pozostale',
 };
 
 const CATEGORIES = {
@@ -477,6 +563,9 @@ const CATEGORIES = {
   ochrona:                { label: 'Pracownicy Ochrony',                baseline: 1400 },
   architekci_geodeci:     { label: 'Architekci i Geodeci',              baseline: 1200 },
   rolnictwo:              { label: 'Rolnictwo i ogrodnictwo',           baseline: 800 },
+  nieruchomosci:          { label: 'Nieruchomości',                     baseline: 1800 },
+  prawo:                  { label: 'Prawo i Usługi Finansowe',          baseline: 1500 },
+  pozostale:              { label: 'Pozostałe',                         baseline: 1200 },
   praktykanci:            { label: 'Praktykanci i Stażyści',            baseline: 600 },
 };
 
@@ -870,8 +959,8 @@ async function renderCategoryDetail(slug) {
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   document.getElementById('detailLogo').textContent = '≡';
-  document.getElementById('detailLogo').style.background = '#3b4057';
-  document.getElementById('detailTitle').textContent = catMeta.label;
+  document.getElementById('detailLogo').style.background = 'linear-gradient(135deg,#4f46e5,#7c3aed)';
+  document.getElementById('detailTitle').innerHTML = catMeta.label + ' <span class="meta-badge">META</span>';
   document.getElementById('detailSub').textContent = 'Ładowanie…';
   document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie danych z portali…</div>';
 
@@ -905,7 +994,7 @@ async function renderCategoryDetail(slug) {
     const grandTotal = portalTotals.reduce((s, p) => s + p.total, 0);
     const max = portalTotals[0]?.total || 1;
 
-    document.getElementById('detailSub').textContent = `${fmt(grandTotal)} ofert łącznie · ${portalTotals.length} portale`;
+    document.getElementById('detailSub').textContent = `${fmt(grandTotal)} ofert · meta-kategoria · ${portalTotals.length} portale`;
 
     if (!portalTotals.length) {
       document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Brak danych dla tej kategorii.</div>';
@@ -921,7 +1010,7 @@ async function renderCategoryDetail(slug) {
             return `<span>${subLabel}: ${fmt(c.val)}</span>`;
           }).join(' · ')}</div>`
         : '';
-      return `<div class="detail-cat-row">
+      return `<div class="detail-cat-row" style="cursor:pointer" onclick="navigateToPortalCat('${slug}','${p.key}')" title="Zobacz trend dla tej kategorii na ${p.label}">
         <span class="detail-cat-rank">${i + 1}</span>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:8px">
@@ -982,6 +1071,7 @@ function showMain() {
   history.pushState({}, '', location.pathname);
   document.getElementById('mainView').classList.remove('hidden');
   document.getElementById('detailView').classList.remove('active');
+  document.getElementById('metodologiaView').classList.remove('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -992,9 +1082,18 @@ function navigateToPortal(key) {
 
 window.addEventListener('popstate', () => {
   const hash = location.hash.slice(1);
-  if (hash.startsWith('cat/')) renderCategoryDetail(hash.slice(4));
-  else if (hash && PORTALS[hash]) renderDetail(hash);
-  else showMain();
+  if (hash.startsWith('cat/') && hash.split('/').length === 3) {
+    const parts = hash.split('/');
+    renderPortalCatTimeline(parts[1], parts[2]);
+  } else if (hash.startsWith('cat/')) {
+    renderCategoryDetail(hash.slice(4));
+  } else if (hash === 'metodologia') {
+    showMetodologia();
+  } else if (hash && PORTALS[hash]) {
+    renderDetail(hash);
+  } else {
+    showMain();
+  }
 });
 
 function navigateToCategory(slug) {
@@ -1070,6 +1169,129 @@ async function renderDetail(key) {
     document.getElementById('detailContent').innerHTML =
       `<div class="detail-cats-loading" style="color:#ff4d6a">Nie udało się załadować kategorii.<br><small>${err.message}</small></div>`;
   }
+}
+
+/* ================================================================
+   PORTAL+CATEGORY TIMELINE — third level navigation
+   ================================================================ */
+function navigateToPortalCat(catSlug, portalKey) {
+  history.pushState({}, '', '#cat/' + catSlug + '/' + portalKey);
+  renderPortalCatTimeline(catSlug, portalKey);
+}
+
+async function renderPortalCatTimeline(catSlug, portalKey) {
+  const catMeta = CATEGORIES[catSlug];
+  const portalMeta = PORTALS[portalKey];
+  if (!catMeta || !portalMeta) return;
+
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('detailView').classList.add('active');
+  document.getElementById('metodologiaView').classList.remove('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  document.getElementById('detailLogo').textContent = portalMeta.label.replace(/\..*$/, '').slice(0,2).toUpperCase();
+  document.getElementById('detailLogo').style.background = portalMeta.color;
+  document.getElementById('detailTitle').textContent = catMeta.label + ' · ' + portalMeta.label;
+  document.getElementById('detailSub').textContent = 'Ładowanie historii…';
+  document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie danych historycznych…</div>';
+
+  // Override back button to go back to category detail
+  document.querySelector('.detail-back').onclick = () => {
+    history.pushState({}, '', '#cat/' + catSlug);
+    renderCategoryDetail(catSlug);
+  };
+
+  try {
+    const res = await fetch(csvUrl(portalMeta.rawGid));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const allRows = parseCSV(await res.text());
+    if (!allRows.length) throw new Error('Brak danych');
+
+    const numFn = v => { const n = parseFloat(String(v||'').replace(/[^0-9.]/g,'')); return isFinite(n)?n:0; };
+
+    // Get relevant columns for this category+portal
+    const relevantCols = Object.entries(RAW_COL_MAP)
+      .filter(([col, cat]) => cat === catSlug && col.startsWith(portalMeta.prefix))
+      .map(([col]) => col);
+
+    // handle olx_wykladanie
+    if (catSlug === 'sklepy' && portalKey === 'olx') {
+      allRows.forEach(row => {
+        Object.keys(row).filter(k => k.startsWith('olx_wykladanie')).forEach(k => {
+          if (!relevantCols.includes(k)) relevantCols.push(k);
+        });
+      });
+    }
+
+    if (!relevantCols.length) throw new Error('Brak mapowania dla tej kombinacji');
+
+    // Aggregate by date
+    const byDate = {};
+    for (const row of allRows) {
+      const d = row.date || row.datetime?.slice(0,10);
+      if (!d) continue;
+      if (!byDate[d]) byDate[d] = 0;
+      byDate[d] += relevantCols.reduce((s, col) => s + numFn(row[col]), 0);
+    }
+
+    const dates = Object.keys(byDate).sort().slice(-30);
+    const values = dates.map(d => byDate[d]);
+
+    if (dates.length < 2) {
+      const latest = values[0] || 0;
+      document.getElementById('detailSub').textContent = `Najnowszy wynik: ${fmt(latest)} ofert · za mało historii`;
+      document.getElementById('detailContent').innerHTML = `
+        <div style="padding:24px;text-align:center">
+          <div style="font-size:32px;font-weight:700;font-family:var(--mono)">${fmt(latest)}</div>
+          <div style="color:var(--text-faint);margin-top:8px;font-size:13px">ofert na ${portalMeta.label} w kategorii ${catMeta.label}</div>
+          <div style="color:var(--text-faint);margin-top:16px;font-size:12px">Wykres pojawi się po zebraniu danych z kilku dni.</div>
+        </div>`;
+      return;
+    }
+
+    const latest = values[values.length - 1];
+    const oldest = values[0];
+    const pct = oldest ? ((latest - oldest) / oldest * 100) : 0;
+    document.getElementById('detailSub').textContent = `${fmt(latest)} ofert · ${dates.length} dni historii · zmiana: ${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
+
+    const maxV = Math.max(...values, 1);
+    const sparkHtml = sparklineSVG(values, { width: 600, height: 120, strokeW: 2.2, color: portalMeta.color });
+    const rowsHtml = dates.slice().reverse().map((d, i) => {
+      const v = byDate[d];
+      const prev = i < dates.length - 1 ? byDate[dates[dates.length - 2 - i]] : null;
+      const delta = prev !== null ? v - prev : null;
+      const cls = delta === null || Math.abs(delta) < 1 ? 'chg-flat' : delta > 0 ? 'chg-up' : 'chg-down';
+      return `<div class="detail-cat-row">
+        <span class="detail-cat-rank" style="width:80px;text-align:left">${d}</span>
+        <span class="detail-cat-name" style="flex:none">${fmt(v)}</span>
+        <span class="num ${cls}" style="font-size:12px;margin-left:12px">${delta !== null ? (delta > 0 ? '+' : '') + fmt(delta) : '–'}</span>
+        <div class="detail-cat-bar" style="flex:1"><i style="width:${(v/maxV*100).toFixed(1)}%;background:${portalMeta.color}"></i></div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('detailContent').innerHTML = `
+      <div style="margin-bottom:20px">${sparkHtml}</div>
+      <div style="border-top:1px solid var(--border);padding-top:16px">${rowsHtml}</div>`;
+
+  } catch(err) {
+    document.getElementById('detailSub').textContent = 'Błąd';
+    document.getElementById('detailContent').innerHTML = `<div class="detail-cats-loading" style="color:#ff4d6a">${err.message}</div>`;
+  }
+}
+
+/* ================================================================
+   METODOLOGIA — static info page
+   ================================================================ */
+function navigateToMetodologia() {
+  history.pushState({}, '', '#metodologia');
+  showMetodologia();
+}
+
+function showMetodologia() {
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('detailView').classList.remove('active');
+  document.getElementById('metodologiaView').classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 /* ================================================================
