@@ -332,7 +332,7 @@ footer a:hover { color: var(--accent); }
 
   <!-- 4. KATEGORIE -->
   <section class="section">
-    <div class="section-title">Kategorie zawodowe <span class="meta-badge" title="Kategorie zagregowane z 4 portali przez nasz system klasyfikacji. Kliknij dowolny wiersz, aby zobaczyć podział na portale.">META</span><small> 29 kategorii · kliknij wiersz → podział na portale</small></div>
+    <div class="section-title">Kategorie zawodowe <span class="meta-badge" title="Kategorie zagregowane z 4 portali przez nasz system klasyfikacji. Kliknij dowolny wiersz, aby zobaczyć podział na portale.">META</span><small> 27 kategorii · kliknij wiersz → podział na portale</small></div>
     <div class="card">
       <div class="table-scroll">
         <table id="catTable">
@@ -536,6 +536,12 @@ const RAW_COL_MAP = {
   olx_prawo: 'prawo',
   olx_franczyza_wlasna_firma: 'pozostale',
   olx_praca_za_granica: 'pozostale',
+  olx_praktyki_staze: 'praktykanci',
+  olx_kadra_kierownicza: 'administracja',
+  olx_wykladanie_ekspozycja_towaru: 'sklepy',
+  olx_praca_sezonowa: 'pozostale',
+  olx_zapraszamy_seniorow: 'pozostale',
+  olx_praca_dodatkowa: 'pozostale',
 };
 
 const CATEGORIES = {
@@ -546,7 +552,6 @@ const CATEGORIES = {
   fizyczni:               { label: 'Pracownicy Fizyczni',               baseline: 10500 },
   produkcja:              { label: 'Pracownicy Produkcji',              baseline: 9800 },
   finanse_ksiegowosc:     { label: 'Finanse i Księgowość',              baseline: 8200 },
-  inzynierowie:           { label: 'Inżynierowie',                      baseline: 7200 },
   marketing_design:       { label: 'Marketingowcy i Designerzy',        baseline: 6800 },
   hr_rekrutacja:          { label: 'HR i rekrutacja',                   baseline: 5100 },
   administracja:          { label: 'Pracownicy Administracji',          baseline: 5000 },
@@ -562,7 +567,6 @@ const CATEGORIES = {
   opieka:                 { label: 'Opieka',                            baseline: 1800 },
   beauty:                 { label: 'Branża Beauty',                     baseline: 1500 },
   ochrona:                { label: 'Pracownicy Ochrony',                baseline: 1400 },
-  architekci_geodeci:     { label: 'Architekci i Geodeci',              baseline: 1200 },
   rolnictwo:              { label: 'Rolnictwo i ogrodnictwo',           baseline: 800 },
   nieruchomosci:          { label: 'Nieruchomości',                     baseline: 1800 },
   prawo:                  { label: 'Prawo i Usługi Finansowe',          baseline: 1500 },
