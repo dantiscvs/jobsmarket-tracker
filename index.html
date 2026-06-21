@@ -279,7 +279,8 @@ footer a:hover { color: var(--accent); }
       <div class="logo-mark">JT</div>
       <div>Polish Job Market Tracker <small>by HireAds.pl</small></div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <a href="#metodologia" onclick="navigateToMetodologia()" style="color:var(--text-dim);font-size:13px;text-decoration:none;border-bottom:1px solid var(--border);padding-bottom:1px;white-space:nowrap" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">Metodologia</a>
       <span class="mock-tag" id="mockTag">Mock data</span>
       <div class="live-badge"><span class="live-dot"></span><span id="liveLabel">Codzienne dane</span></div>
     </div>
@@ -937,16 +938,18 @@ function renderMainChart() {
    CATEGORY DETAIL — portal breakdown for a meta-category
    ================================================================ */
 const rawCache = {};
+const RAW_CACHE_TTL = 15 * 60 * 1000; // 15 minut
 
 async function fetchRawLatest(portalKey) {
-  if (rawCache[portalKey]) return rawCache[portalKey];
+  const cached = rawCache[portalKey];
+  if (cached && (Date.now() - cached.ts) < RAW_CACHE_TTL) return cached;
   const meta = PORTALS[portalKey];
   const res = await fetch(csvUrl(meta.rawGid));
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const rows = parseCSV(await res.text());
   const num = v => { const n = parseFloat(String(v||'').replace(/[^0-9.]/g,'')); return isFinite(n)?n:0; };
   const latest = rows.sort((a,b) => (b.datetime||b.date||'') > (a.datetime||a.date||'') ? 1 : -1)[0] || {};
-  rawCache[portalKey] = { row: latest, num };
+  rawCache[portalKey] = { row: latest, num, ts: Date.now() };
   return rawCache[portalKey];
 }
 
