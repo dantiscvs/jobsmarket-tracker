@@ -372,7 +372,10 @@ footer a:hover { color: var(--accent); }
         <div class="detail-portal-sub" id="detailSub"></div>
       </div>
     </div>
-    <div class="section-title">Kategorie <small>liczba ofert wg kategorii · najnowsze dane</small></div>
+    <div id="detailChartSection" class="card card-pad" style="margin-bottom:12px;display:none">
+      <div class="chart-box" style="height:220px"><canvas id="detailChartCanvas"></canvas></div>
+    </div>
+    <div class="section-title" id="detailSectionTitle">Kategorie <small>liczba ofert wg kategorii · najnowsze dane</small></div>
     <div class="card card-pad" id="detailContent">
       <div class="detail-cats-loading">Ładowanie kategorii…</div>
     </div>
@@ -770,7 +773,8 @@ function renderTrend30() {
   const svgHost = document.getElementById('spark30');
   const up = last30[last30.length - 1] >= last30[0];
   const inner = sparklineSVG(last30, { width: 600, height: 88, strokeW: 2.2, color: up ? '#00ff88' : '#ff4d6a' });
-  svgHost.outerHTML = `<div id="spark30" style="height:88px">${inner}</div>`;
+  const fixedSvg = inner.replace('<svg ', '<svg style="width:100%;height:100%;display:block" ');
+  svgHost.outerHTML = `<div id="spark30" style="height:88px;overflow:hidden">${fixedSvg}</div>`;
   document.getElementById('deltaChips').innerHTML =
     deltaChip('7D', pctChange(totals, 7)) + deltaChip('30D', pctChange(totals, 30));
 }
@@ -806,7 +810,13 @@ function renderPortals() {
         <div class="portal-num" data-count="${val}">0</div>
         <div class="portal-trend ${trendCls}">${arrow} ${wow === null ? '–' : fmtPct(wow)}</div>
       </div>
-      <div class="portal-spark">${sparklineSVG(series.slice(-7), { width: 200, height: 34, color: meta.color })}</div>`;
+      <div class="portal-spark">
+        ${sparklineSVG(series.slice(-7), { width: 200, height: 34, color: meta.color })}
+        <div style="display:flex;justify-content:space-between;margin-top:3px">
+          <span style="font-size:10px;color:var(--text-faint);font-family:var(--mono)">${fmt(series.at(-8) ?? series[0] ?? 0)}</span>
+          <span style="font-size:10px;color:var(--text-faint);font-family:var(--mono)">${fmt(series.at(-1) ?? 0)}</span>
+        </div>
+      </div>`;
     card.addEventListener('click', () => navigateToPortal(key));
     grid.appendChild(card);
     countUp(card.querySelector('.portal-num'), val, 1100);
@@ -871,59 +881,66 @@ function renderMainChart() {
   const { dates, totals, portals } = state.data;
   const labels = dates.map(d => new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }));
 
-  const datasets = [
-    {
-      id: '__total', label: 'Razem', data: totals,
-      borderColor: '#f2f3f7', backgroundColor: 'rgba(242,243,247,0.04)',
-      borderWidth: 2.5, fill: true, color: '#f2f3f7',
-    },
-    ...Object.entries(PORTALS).map(([key, meta]) => ({
-      id: key, label: meta.label, data: portals[key],
-      borderColor: meta.color, borderWidth: 1.5, fill: false, color: meta.color,
-    })),
+  const rawDatasets = [
+    { id: '__total', label: 'Razem', data: totals, borderColor: '#f2f3f7', backgroundColor: 'rgba(242,243,247,0.04)', borderWidth: 2.5, fill: true, color: '#f2f3f7' },
+    ...Object.entries(PORTALS).map(([key, meta]) => ({ id: key, label: meta.label, data: portals[key], borderColor: meta.color, borderWidth: 1.5, fill: false, color: meta.color })),
   ];
 
-  if (state.chart) state.chart.destroy();
-  state.chart = new Chart(document.getElementById('mainChart'), {
-    type: 'line',
-    data: {
-      labels,
-      datasets: datasets.map(d => ({
-        ...d, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: d.borderColor,
-        tension: 0.35,
-      })),
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(16,16,25,0.95)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
-          titleFont: { family: 'Inter', weight: '600' }, bodyFont: { family: 'JetBrains Mono', size: 12 },
-          padding: 12, cornerRadius: 10, boxPadding: 5,
-          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` },
+  let indexedMode = false;
+
+  function indexedData(series) {
+    const base = series.find(v => v > 0) || 1;
+    return series.map(v => parseFloat(((v / base) * 100).toFixed(2)));
+  }
+
+  function buildChart() {
+    const datasets = rawDatasets.map(d => ({
+      ...d,
+      data: indexedMode ? indexedData(d.data) : d.data,
+      pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: d.borderColor, tension: 0.35,
+    }));
+
+    if (state.chart) state.chart.destroy();
+    state.chart = new Chart(document.getElementById('mainChart'), {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(16,16,25,0.95)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+            titleFont: { family: 'Inter', weight: '600' }, bodyFont: { family: 'JetBrains Mono', size: 12 },
+            padding: 12, cornerRadius: 10, boxPadding: 5,
+            callbacks: {
+              label: ctx => indexedMode
+                ? ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%`
+                : ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`,
+            },
+          },
         },
-      },
-      scales: {
-        x: {
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#5d6170', maxTicksLimit: 10, font: { family: 'Inter', size: 11 } },
-        },
-        y: {
-          grid: { color: 'rgba(255,255,255,0.05)' },
-          ticks: {
-            color: '#5d6170', font: { family: 'JetBrains Mono', size: 11 },
-            callback: v => v >= 1000 ? (v / 1000).toLocaleString('pl-PL') + ' tys.' : v,
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5d6170', maxTicksLimit: 10, font: { family: 'Inter', size: 11 } } },
+          y: {
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            ticks: {
+              color: '#5d6170', font: { family: 'JetBrains Mono', size: 11 },
+              callback: v => indexedMode ? v.toFixed(0) + '%' : (v >= 1000 ? (v / 1000).toLocaleString('pl-PL') + ' tys.' : v),
+            },
           },
         },
       },
-    },
-  });
+    });
+  }
+
+  buildChart();
 
   const toggles = document.getElementById('chartToggles');
   toggles.innerHTML = '';
-  datasets.forEach((d, i) => {
+
+  // Series visibility toggles
+  rawDatasets.forEach((d, i) => {
     const btn = document.createElement('button');
     btn.className = 'toggle-chip active';
     btn.style.color = d.color;
@@ -936,11 +953,87 @@ function renderMainChart() {
     });
     toggles.appendChild(btn);
   });
+
+  // Indexed mode toggle
+  const sep = document.createElement('span');
+  sep.style.cssText = 'width:1px;height:16px;background:var(--border);margin:0 4px';
+  toggles.appendChild(sep);
+  const idxBtn = document.createElement('button');
+  idxBtn.className = 'toggle-chip';
+  idxBtn.style.cssText = 'color:var(--text-dim)';
+  idxBtn.textContent = '% zmiana';
+  idxBtn.title = 'Pokaż zmianę procentową względem pierwszego punktu (indeks 100)';
+  idxBtn.addEventListener('click', () => {
+    indexedMode = !indexedMode;
+    idxBtn.classList.toggle('active', indexedMode);
+    idxBtn.style.color = indexedMode ? 'var(--accent)' : 'var(--text-dim)';
+    buildChart();
+    // Restore visibility
+    document.querySelectorAll('#chartToggles .toggle-chip').forEach((b, i) => {
+      if (i < rawDatasets.length && !b.classList.contains('active'))
+        state.chart.setDatasetVisibility(i, false);
+    });
+    state.chart.update();
+  });
+  toggles.appendChild(idxBtn);
 }
 
 /* ================================================================
    CATEGORY DETAIL — portal breakdown for a meta-category
    ================================================================ */
+/* ================================================================
+   DETAIL PAGE CHART HELPER
+   ================================================================ */
+let detailChart = null;
+
+function showDetailChart(labels, datasets) {
+  const section = document.getElementById('detailChartSection');
+  section.style.display = 'block';
+  if (detailChart) { detailChart.destroy(); detailChart = null; }
+  const canvas = document.getElementById('detailChartCanvas');
+  detailChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: datasets.map(d => ({
+        ...d, pointRadius: 0, pointHoverRadius: 5, tension: 0.3,
+        pointHoverBackgroundColor: d.borderColor,
+      })),
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: datasets.length > 1, labels: { color: '#9ca0ad', font: { family: 'Inter', size: 12 }, boxWidth: 12 } },
+        tooltip: {
+          backgroundColor: 'rgba(16,16,25,0.95)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
+          titleFont: { family: 'Inter', weight: '600', size: 12 }, bodyFont: { family: 'JetBrains Mono', size: 12 },
+          padding: 12, cornerRadius: 10, boxPadding: 5,
+          callbacks: { label: ctx => ` ${ctx.dataset.label || ''}: ${fmt(ctx.parsed.y)}` },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#5d6170', maxTicksLimit: 8, font: { family: 'Inter', size: 11 } },
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: '#5d6170', font: { family: 'JetBrains Mono', size: 11 },
+            callback: v => v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + ' tys.' : v,
+          },
+        },
+      },
+    },
+  });
+}
+
+function hideDetailChart() {
+  document.getElementById('detailChartSection').style.display = 'none';
+  if (detailChart) { detailChart.destroy(); detailChart = null; }
+}
+
 const rawCache = {};
 const RAW_CACHE_TTL = 15 * 60 * 1000; // 15 minut
 
@@ -965,9 +1058,11 @@ async function renderCategoryDetail(slug) {
   document.getElementById('detailView').classList.add('active');
   window.scrollTo({ top: 0, behavior: 'instant' });
 
+  hideDetailChart();
   document.getElementById('detailLogo').textContent = '≡';
   document.getElementById('detailLogo').style.background = 'linear-gradient(135deg,#4f46e5,#7c3aed)';
   document.getElementById('detailTitle').innerHTML = catMeta.label + ' <span class="meta-badge">META</span>';
+  document.getElementById('detailSectionTitle').innerHTML = 'Podział na portale <small>najnowsze dane · kliknij portal → trend</small>';
   document.getElementById('detailSub').textContent = 'Ładowanie…';
   document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie danych z portali…</div>';
 
@@ -1000,6 +1095,17 @@ async function renderCategoryDetail(slug) {
 
     const grandTotal = portalTotals.reduce((s, p) => s + p.total, 0);
     const max = portalTotals[0]?.total || 1;
+
+    // Timeline chart from daily_totals if we have history
+    const { dates, categories } = state.data;
+    const catSeries = categories[slug];
+    if (catSeries && dates && dates.length >= 2) {
+      const labelFmt = d => new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+      showDetailChart(dates.map(labelFmt), [{
+        label: catMeta.label, data: catSeries,
+        borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.12)', fill: true, borderWidth: 2,
+      }]);
+    }
 
     document.getElementById('detailSub').textContent = `${fmt(grandTotal)} ofert · meta-kategoria · ${portalTotals.length} portale`;
 
@@ -1079,6 +1185,7 @@ function showMain() {
   document.getElementById('mainView').classList.remove('hidden');
   document.getElementById('detailView').classList.remove('active');
   document.getElementById('metodologiaView').classList.remove('active');
+  hideDetailChart();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1118,6 +1225,7 @@ async function renderDetail(key) {
 
   document.getElementById('mainView').classList.add('hidden');
   document.getElementById('detailView').classList.add('active');
+  hideDetailChart();
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   const initials = meta.label.replace(/\..*$/, '').slice(0, 2).toUpperCase();
@@ -1125,44 +1233,64 @@ async function renderDetail(key) {
   document.getElementById('detailLogo').style.background = meta.color;
   document.getElementById('detailTitle').textContent = meta.label;
   document.getElementById('detailSub').textContent = 'Ładowanie danych…';
-  document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie kategorii…</div>';
+  document.getElementById('detailSectionTitle').innerHTML = 'Kategorie <small>liczba ofert wg kategorii · najnowsze dane</small>';
+  document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie…</div>';
 
-  let rows;
   try {
     const res = await fetch(csvUrl(meta.rawGid));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const allRows = parseCSV(await res.text());
     if (!allRows.length) throw new Error('Brak danych');
 
-    // pick the latest row by date/datetime column
-    allRows.sort((a, b) => {
-      const da = a.datetime || a.date || '';
-      const db = b.datetime || b.date || '';
-      return da < db ? 1 : -1;
-    });
+    const num = v => { const n = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
+
+    // Build daily totals for timeline (sum all cat columns per date)
+    const byDate = {};
+    for (const row of allRows) {
+      const d = (row.date || row.datetime || '').slice(0, 10);
+      if (!d) continue;
+      const dayTotal = Object.entries(row)
+        .filter(([col]) => col.startsWith(meta.prefix) && !col.endsWith('_total') && col !== 'pracujpl_jobcenter')
+        .reduce((s, [, v]) => s + num(v), 0);
+      if (!byDate[d] || dayTotal > byDate[d]) byDate[d] = dayTotal;
+    }
+    const chartDates = Object.keys(byDate).sort();
+    const chartVals = chartDates.map(d => byDate[d]);
+
+    // Show timeline chart
+    if (chartDates.length >= 2) {
+      const labelFmt = d => { const dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }); };
+      showDetailChart(chartDates.map(labelFmt), [{
+        label: meta.label, data: chartVals,
+        borderColor: meta.color, backgroundColor: meta.color + '18', fill: true, borderWidth: 2,
+      }]);
+    }
+
+    // Latest row for category breakdown
+    allRows.sort((a, b) => (b.datetime || b.date || '') > (a.datetime || a.date || '') ? 1 : -1);
     const latest = allRows[0];
     const latestDate = latest.date || latest.datetime || '';
 
-    const num = v => { const n = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
-
-    rows = Object.entries(latest)
-      .filter(([col]) => col.startsWith(meta.prefix) && col !== meta.prefix + 'total')
+    const rows = Object.entries(latest)
+      .filter(([col]) => col.startsWith(meta.prefix) && col !== meta.prefix + 'total' && col !== 'pracujpl_jobcenter')
       .map(([col, val]) => {
         const slug = col.slice(meta.prefix.length);
-        const label = key === 'pracuj_pl'
-          ? (PRACUJ_LABELS[slug] || slugToLabel(slug))
-          : slugToLabel(slug);
+        const label = key === 'pracuj_pl' ? (PRACUJ_LABELS[slug] || slugToLabel(slug)) : slugToLabel(slug);
         return { slug, label, count: num(val) };
       })
       .filter(r => r.count > 0)
       .sort((a, b) => b.count - a.count);
 
     const total = rows.reduce((s, r) => s + r.count, 0);
-    document.getElementById('detailSub').textContent =
-      `${fmt(total)} ofert łącznie · dane z ${latestDate}`;
+    const pctChg = chartVals.length >= 2
+      ? ((chartVals.at(-1) - chartVals[0]) / (chartVals[0] || 1) * 100)
+      : null;
+    const chgStr = pctChg !== null
+      ? ` · zmiana: ${pctChg > 0 ? '+' : ''}${pctChg.toFixed(1)}% (${chartDates.length} dni)`
+      : '';
+    document.getElementById('detailSub').textContent = `${fmt(total)} ofert · dane z ${latestDate}${chgStr}`;
 
     if (!rows.length) throw new Error('Brak kategorii');
-
     const max = rows[0].count;
     document.getElementById('detailContent').innerHTML = rows.map((r, i) => `
       <div class="detail-cat-row">
@@ -1174,7 +1302,7 @@ async function renderDetail(key) {
   } catch (err) {
     document.getElementById('detailSub').textContent = 'Błąd ładowania danych';
     document.getElementById('detailContent').innerHTML =
-      `<div class="detail-cats-loading" style="color:#ff4d6a">Nie udało się załadować kategorii.<br><small>${err.message}</small></div>`;
+      `<div class="detail-cats-loading" style="color:#ff4d6a">Nie udało się załadować.<br><small>${err.message}</small></div>`;
   }
 }
 
@@ -1196,9 +1324,11 @@ async function renderPortalCatTimeline(catSlug, portalKey) {
   document.getElementById('metodologiaView').classList.remove('active');
   window.scrollTo({ top: 0, behavior: 'instant' });
 
+  hideDetailChart();
   document.getElementById('detailLogo').textContent = portalMeta.label.replace(/\..*$/, '').slice(0,2).toUpperCase();
   document.getElementById('detailLogo').style.background = portalMeta.color;
   document.getElementById('detailTitle').textContent = catMeta.label + ' · ' + portalMeta.label;
+  document.getElementById('detailSectionTitle').innerHTML = 'Historia <small>ostatnie 30 dni · dzienna liczba ofert</small>';
   document.getElementById('detailSub').textContent = 'Ładowanie historii…';
   document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie danych historycznych…</div>';
 
@@ -1261,8 +1391,15 @@ async function renderPortalCatTimeline(catSlug, portalKey) {
     const pct = oldest ? ((latest - oldest) / oldest * 100) : 0;
     document.getElementById('detailSub').textContent = `${fmt(latest)} ofert · ${dates.length} dni historii · zmiana: ${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
 
+    // Chart.js timeline
+    const labelFmt = d => new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+    showDetailChart(dates.map(labelFmt), [{
+      label: `${catMeta.label} · ${portalMeta.label}`,
+      data: values,
+      borderColor: portalMeta.color, backgroundColor: portalMeta.color + '18', fill: true, borderWidth: 2,
+    }]);
+
     const maxV = Math.max(...values, 1);
-    const sparkHtml = sparklineSVG(values, { width: 600, height: 120, strokeW: 2.2, color: portalMeta.color });
     const rowsHtml = dates.slice().reverse().map((d, i) => {
       const v = byDate[d];
       const prev = i < dates.length - 1 ? byDate[dates[dates.length - 2 - i]] : null;
@@ -1276,9 +1413,7 @@ async function renderPortalCatTimeline(catSlug, portalKey) {
       </div>`;
     }).join('');
 
-    document.getElementById('detailContent').innerHTML = `
-      <div style="margin-bottom:20px">${sparkHtml}</div>
-      <div style="border-top:1px solid var(--border);padding-top:16px">${rowsHtml}</div>`;
+    document.getElementById('detailContent').innerHTML = `<div style="border-top:1px solid var(--border);padding-top:4px">${rowsHtml}</div>`;
 
   } catch(err) {
     document.getElementById('detailSub').textContent = 'Błąd';
