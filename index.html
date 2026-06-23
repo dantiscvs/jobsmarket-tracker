@@ -205,12 +205,19 @@ footer a:hover { color: var(--accent); }
 .detail-portal-title { font-size: 22px; font-weight: 700; }
 .detail-portal-sub { font-size: 13px; color: var(--text-faint); margin-top: 2px; font-family: var(--mono); }
 .detail-cats-loading { padding: 40px; text-align: center; color: var(--text-faint); }
-.detail-cat-row { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.detail-cat-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.04); cursor: default; }
 .detail-cat-row:last-child { border-bottom: none; }
+.detail-cat-row.clickable { cursor: pointer; }
+.detail-cat-row.clickable:hover { background: rgba(255,255,255,0.03); border-radius: 8px; padding-left: 6px; padding-right: 6px; margin: 0 -6px; }
+.detail-cat-row.active-row { background: rgba(255,255,255,0.05); border-radius: 8px; padding-left: 6px; padding-right: 6px; margin: 0 -6px; }
 .detail-cat-rank { font-family: var(--mono); font-size: 11px; color: var(--text-faint); width: 22px; flex-shrink: 0; text-align: right; }
 .detail-cat-name { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; }
-.detail-cat-num { font-family: var(--mono); font-size: 13.5px; font-weight: 700; flex-shrink: 0; width: 80px; text-align: right; }
-.detail-cat-bar { flex-shrink: 0; width: 140px; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.detail-cat-num { font-family: var(--mono); font-size: 13.5px; font-weight: 700; flex-shrink: 0; width: 76px; text-align: right; }
+.detail-delta { font-family: var(--mono); font-size: 11.5px; flex-shrink: 0; width: 56px; text-align: right; color: var(--text-faint); }
+.detail-delta.up { color: var(--green); }
+.detail-delta.dn { color: var(--red); }
+.detail-delta-hdr { font-family: var(--mono); font-size: 10px; flex-shrink: 0; width: 56px; text-align: right; color: var(--text-faint); letter-spacing: 0.03em; }
+.detail-cat-bar { flex-shrink: 0; width: 100px; height: 5px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
 .detail-cat-bar i { display: block; height: 100%; border-radius: 3px; transition: width 600ms cubic-bezier(.2,.8,.2,1); }
 .detail-cat-sub { font-size: 11px; color: var(--text-faint); margin-top: 3px; line-height: 1.5; }
 .detail-cat-sub span { display: inline-block; margin-right: 4px; }
@@ -244,6 +251,8 @@ footer a:hover { color: var(--accent); }
   .bar-cell { display: none; }
   .header-inner .logo small { display: none; }
   .detail-cat-bar { display: none; }
+  .detail-delta { display: none; }
+  .detail-delta-hdr { display: none; }
   .detail-cat-row { gap: 8px; padding: 8px 0; }
   .detail-cat-name { font-size: 12px; }
   .detail-cat-num { width: 55px; font-size: 12px; }
@@ -373,6 +382,10 @@ footer a:hover { color: var(--accent); }
       </div>
     </div>
     <div id="detailChartSection" class="card card-pad" style="margin-bottom:12px;display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div id="detailChartLabel" style="font-size:13px;font-weight:600;color:var(--text-dim)"></div>
+        <button id="detailChartIdxBtn" class="toggle-chip" style="font-size:11px;color:var(--text-dim)">% zmiana</button>
+      </div>
       <div class="chart-box" style="height:220px"><canvas id="detailChartCanvas"></canvas></div>
     </div>
     <div class="section-title" id="detailSectionTitle">Kategorie <small>liczba ofert wg kategorii · najnowsze dane</small></div>
@@ -985,18 +998,20 @@ function renderMainChart() {
    DETAIL PAGE CHART HELPER
    ================================================================ */
 let detailChart = null;
+let _detailChartState = { labels: [], datasets: [], indexed: false };
 
-function showDetailChart(labels, datasets) {
-  const section = document.getElementById('detailChartSection');
-  section.style.display = 'block';
+function _buildDetailChart() {
+  const { labels, datasets, indexed } = _detailChartState;
   if (detailChart) { detailChart.destroy(); detailChart = null; }
-  const canvas = document.getElementById('detailChartCanvas');
-  detailChart = new Chart(canvas, {
+  const indexify = data => { const b = data.find(v => v > 0) || 1; return data.map(v => +((v / b) * 100).toFixed(2)); };
+  detailChart = new Chart(document.getElementById('detailChartCanvas'), {
     type: 'line',
     data: {
       labels,
       datasets: datasets.map(d => ({
-        ...d, pointRadius: 0, pointHoverRadius: 5, tension: 0.3,
+        ...d,
+        data: indexed ? indexify(d.data) : d.data,
+        pointRadius: 0, pointHoverRadius: 5, tension: 0.3,
         pointHoverBackgroundColor: d.borderColor,
       })),
     },
@@ -1009,29 +1024,49 @@ function showDetailChart(labels, datasets) {
           backgroundColor: 'rgba(16,16,25,0.95)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1,
           titleFont: { family: 'Inter', weight: '600', size: 12 }, bodyFont: { family: 'JetBrains Mono', size: 12 },
           padding: 12, cornerRadius: 10, boxPadding: 5,
-          callbacks: { label: ctx => ` ${ctx.dataset.label || ''}: ${fmt(ctx.parsed.y)}` },
+          callbacks: { label: ctx => indexed ? ` ${ctx.dataset.label || ''}: ${ctx.parsed.y.toFixed(1)}%` : ` ${ctx.dataset.label || ''}: ${fmt(ctx.parsed.y)}` },
         },
       },
       scales: {
-        x: {
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#5d6170', maxTicksLimit: 8, font: { family: 'Inter', size: 11 } },
-        },
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5d6170', maxTicksLimit: 8, font: { family: 'Inter', size: 11 } } },
         y: {
           grid: { color: 'rgba(255,255,255,0.05)' },
-          ticks: {
-            color: '#5d6170', font: { family: 'JetBrains Mono', size: 11 },
-            callback: v => v >= 1000 ? (v / 1000).toFixed(1).replace('.', ',') + ' tys.' : v,
-          },
+          ticks: { color: '#5d6170', font: { family: 'JetBrains Mono', size: 11 },
+            callback: v => indexed ? v.toFixed(0) + '%' : (v >= 1000 ? (v/1000).toFixed(1).replace('.',',') + ' tys.' : v) },
         },
       },
     },
   });
 }
 
+function showDetailChart(labels, datasets, chartLabel) {
+  _detailChartState = { labels, datasets, indexed: false };
+  const section = document.getElementById('detailChartSection');
+  section.style.display = 'block';
+  if (chartLabel !== undefined) document.getElementById('detailChartLabel').textContent = chartLabel || '';
+  _buildDetailChart();
+
+  const btn = document.getElementById('detailChartIdxBtn');
+  btn.classList.remove('active');
+  btn.style.color = 'var(--text-dim)';
+  btn.onclick = () => {
+    _detailChartState.indexed = !_detailChartState.indexed;
+    btn.classList.toggle('active', _detailChartState.indexed);
+    btn.style.color = _detailChartState.indexed ? 'var(--accent)' : 'var(--text-dim)';
+    _buildDetailChart();
+  };
+}
+
+function updateDetailChart(labels, datasets, chartLabel) {
+  _detailChartState = { ..._detailChartState, labels, datasets };
+  if (chartLabel !== undefined) document.getElementById('detailChartLabel').textContent = chartLabel || '';
+  _buildDetailChart();
+}
+
 function hideDetailChart() {
   document.getElementById('detailChartSection').style.display = 'none';
   if (detailChart) { detailChart.destroy(); detailChart = null; }
+  _detailChartState = { labels: [], datasets: [], indexed: false };
 }
 
 const rawCache = {};
@@ -1233,7 +1268,8 @@ async function renderDetail(key) {
   document.getElementById('detailLogo').style.background = meta.color;
   document.getElementById('detailTitle').textContent = meta.label;
   document.getElementById('detailSub').textContent = 'Ładowanie danych…';
-  document.getElementById('detailSectionTitle').innerHTML = 'Kategorie <small>liczba ofert wg kategorii · najnowsze dane</small>';
+  document.getElementById('detailSectionTitle').innerHTML =
+    'Kategorie <small>oferty · Δ7d · Δ30d · Δ90d · Δ365d · kliknij → wykres</small>';
   document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie…</div>';
 
   try {
@@ -1244,61 +1280,132 @@ async function renderDetail(key) {
 
     const num = v => { const n = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
 
-    // Build daily totals for timeline (sum all cat columns per date)
-    const byDate = {};
+    // Sort all rows by date ascending
+    allRows.sort((a, b) => {
+      const da = a.datetime || a.date || '', db = b.datetime || b.date || '';
+      return da < db ? -1 : 1;
+    });
+
+    // Get all category column names from latest row
+    const latest = allRows[allRows.length - 1];
+    const latestDate = (latest.date || latest.datetime || '').slice(0, 10);
+    const catCols = Object.keys(latest)
+      .filter(col => col.startsWith(meta.prefix) && col !== meta.prefix + 'total' && col !== 'pracujpl_jobcenter');
+
+    // Build per-category daily history: { col -> { date -> val } }
+    // Keep max value per (col, date) to handle multiple runs same day
+    const catByDate = {};
+    for (const col of catCols) catByDate[col] = {};
     for (const row of allRows) {
       const d = (row.date || row.datetime || '').slice(0, 10);
       if (!d) continue;
-      const dayTotal = Object.entries(row)
-        .filter(([col]) => col.startsWith(meta.prefix) && !col.endsWith('_total') && col !== 'pracujpl_jobcenter')
-        .reduce((s, [, v]) => s + num(v), 0);
-      if (!byDate[d] || dayTotal > byDate[d]) byDate[d] = dayTotal;
+      for (const col of catCols) {
+        const v = num(row[col]);
+        if (!catByDate[col][d] || v > catByDate[col][d]) catByDate[col][d] = v;
+      }
     }
-    const chartDates = Object.keys(byDate).sort();
-    const chartVals = chartDates.map(d => byDate[d]);
 
-    // Show timeline chart
-    if (chartDates.length >= 2) {
-      const labelFmt = d => { const dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }); };
-      showDetailChart(chartDates.map(labelFmt), [{
-        label: meta.label, data: chartVals,
+    // All unique dates sorted
+    const allDates = [...new Set(allRows.map(r => (r.date || r.datetime || '').slice(0, 10)).filter(Boolean))].sort();
+
+    // Helper: get value N days before latestDate
+    function histVal(col, daysBack) {
+      const target = new Date(latestDate);
+      target.setDate(target.getDate() - daysBack);
+      const tStr = target.toISOString().slice(0, 10);
+      // find latest date <= tStr
+      const cand = allDates.filter(d => d <= tStr);
+      if (!cand.length) return null;
+      const d = cand[cand.length - 1];
+      return catByDate[col][d] ?? null;
+    }
+
+    // Portal total series for default chart
+    const totalByDate = {};
+    for (const d of allDates) {
+      totalByDate[d] = catCols.reduce((s, col) => s + (catByDate[col][d] || 0), 0);
+    }
+    const totalDates = allDates.filter(d => totalByDate[d] > 0);
+    const totalVals = totalDates.map(d => totalByDate[d]);
+
+    // Render portal total chart
+    const labelFmt = d => new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+    if (totalDates.length >= 2) {
+      showDetailChart(totalDates.map(labelFmt), [{
+        label: meta.label, data: totalVals,
         borderColor: meta.color, backgroundColor: meta.color + '18', fill: true, borderWidth: 2,
-      }]);
+      }], meta.label + ' — wszystkie kategorie');
     }
 
-    // Latest row for category breakdown
-    allRows.sort((a, b) => (b.datetime || b.date || '') > (a.datetime || a.date || '') ? 1 : -1);
-    const latest = allRows[0];
-    const latestDate = latest.date || latest.datetime || '';
-
-    const rows = Object.entries(latest)
-      .filter(([col]) => col.startsWith(meta.prefix) && col !== meta.prefix + 'total' && col !== 'pracujpl_jobcenter')
-      .map(([col, val]) => {
-        const slug = col.slice(meta.prefix.length);
-        const label = key === 'pracuj_pl' ? (PRACUJ_LABELS[slug] || slugToLabel(slug)) : slugToLabel(slug);
-        return { slug, label, count: num(val) };
-      })
-      .filter(r => r.count > 0)
-      .sort((a, b) => b.count - a.count);
+    // Build rows with deltas
+    const rows = catCols.map(col => {
+      const slug = col.slice(meta.prefix.length);
+      const label = key === 'pracuj_pl' ? (PRACUJ_LABELS[slug] || slugToLabel(slug)) : slugToLabel(slug);
+      const count = num(latest[col]);
+      const d7  = histVal(col, 7),  d30  = histVal(col, 30);
+      const d90 = histVal(col, 90), d365 = histVal(col, 365);
+      const delta = (past) => past === null ? null : count - past;
+      return { slug, col, label, count, d7: delta(d7), d30: delta(d30), d90: delta(d90), d365: delta(d365) };
+    }).filter(r => r.count > 0).sort((a, b) => b.count - a.count);
 
     const total = rows.reduce((s, r) => s + r.count, 0);
-    const pctChg = chartVals.length >= 2
-      ? ((chartVals.at(-1) - chartVals[0]) / (chartVals[0] || 1) * 100)
-      : null;
-    const chgStr = pctChg !== null
-      ? ` · zmiana: ${pctChg > 0 ? '+' : ''}${pctChg.toFixed(1)}% (${chartDates.length} dni)`
-      : '';
-    document.getElementById('detailSub').textContent = `${fmt(total)} ofert · dane z ${latestDate}${chgStr}`;
+    const pctChg = totalVals.length >= 2 ? ((totalVals.at(-1) - totalVals[0]) / (totalVals[0] || 1) * 100) : null;
+    document.getElementById('detailSub').textContent =
+      `${fmt(total)} ofert · ${latestDate}${pctChg !== null ? ` · trend: ${pctChg > 0 ? '+' : ''}${pctChg.toFixed(1)}% (${totalDates.length}d)` : ''}`;
 
     if (!rows.length) throw new Error('Brak kategorii');
+
+    function deltaHtml(d) {
+      if (d === null) return '<span class="detail-delta">–</span>';
+      const cls = d > 0 ? 'up' : d < 0 ? 'dn' : '';
+      const sign = d > 0 ? '+' : '';
+      return `<span class="detail-delta ${cls}">${sign}${fmt(d)}</span>`;
+    }
+
     const max = rows[0].count;
-    document.getElementById('detailContent').innerHTML = rows.map((r, i) => `
-      <div class="detail-cat-row">
+
+    // Header row
+    const header = `<div class="detail-cat-row" style="cursor:default;opacity:0.5;padding-bottom:6px">
+      <span class="detail-cat-rank"></span>
+      <span class="detail-cat-name" style="font-size:11px;font-weight:500;color:var(--text-faint)">Kategoria</span>
+      <span class="detail-cat-num" style="font-size:10px;color:var(--text-faint)">Dziś</span>
+      <span class="detail-delta-hdr">Δ7d</span>
+      <span class="detail-delta-hdr">Δ30d</span>
+      <span class="detail-delta-hdr">Δ90d</span>
+      <span class="detail-delta-hdr">Δ365d</span>
+      <div class="detail-cat-bar" style="background:transparent"></div>
+    </div>`;
+
+    const rowsHtml = rows.map((r, i) => `
+      <div class="detail-cat-row clickable" data-col="${r.col}" data-label="${r.label}">
         <span class="detail-cat-rank">${i + 1}</span>
         <span class="detail-cat-name">${r.label}</span>
         <span class="detail-cat-num">${fmt(r.count)}</span>
-        <div class="detail-cat-bar"><i style="width:${(r.count / max * 100).toFixed(1)}%;background:${meta.color}"></i></div>
+        ${deltaHtml(r.d7)}${deltaHtml(r.d30)}${deltaHtml(r.d90)}${deltaHtml(r.d365)}
+        <div class="detail-cat-bar"><i style="width:${(r.count/max*100).toFixed(1)}%;background:${meta.color}"></i></div>
       </div>`).join('');
+
+    document.getElementById('detailContent').innerHTML = header + rowsHtml;
+
+    // Wire click → update chart with category history
+    document.querySelectorAll('#detailContent .detail-cat-row.clickable').forEach(row => {
+      row.addEventListener('click', () => {
+        document.querySelectorAll('#detailContent .detail-cat-row').forEach(r => r.classList.remove('active-row'));
+        row.classList.add('active-row');
+        const col = row.dataset.col;
+        const label = row.dataset.label;
+        const catDates = allDates.filter(d => catByDate[col][d] !== undefined);
+        const catVals = catDates.map(d => catByDate[col][d]);
+        if (catDates.length >= 2) {
+          updateDetailChart(catDates.map(labelFmt), [{
+            label, data: catVals,
+            borderColor: meta.color, backgroundColor: meta.color + '18', fill: true, borderWidth: 2,
+          }], label);
+        }
+        document.getElementById('detailChartSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    });
+
   } catch (err) {
     document.getElementById('detailSub').textContent = 'Błąd ładowania danych';
     document.getElementById('detailContent').innerHTML =
