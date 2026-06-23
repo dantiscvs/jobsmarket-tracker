@@ -1231,8 +1231,10 @@ function navigateToPortal(key) {
 
 window.addEventListener('popstate', () => {
   const hash = location.hash.slice(1);
-  if (hash.startsWith('cat/') && hash.split('/').length === 3) {
-    const parts = hash.split('/');
+  const parts = hash.split('/');
+  if (parts[0] === 'portal' && parts.length === 3) {
+    renderPortalRawCat(parts[1], parts[2]);
+  } else if (hash.startsWith('cat/') && parts.length === 3) {
     renderPortalCatTimeline(parts[1], parts[2]);
   } else if (hash.startsWith('cat/')) {
     renderCategoryDetail(hash.slice(4));
@@ -1244,6 +1246,126 @@ window.addEventListener('popstate', () => {
     showMain();
   }
 });
+
+function navigateToPortalRawCat(portalKey, rawSlug) {
+  history.pushState({}, '', '#portal/' + portalKey + '/' + rawSlug);
+  renderPortalRawCat(portalKey, rawSlug);
+}
+
+async function renderPortalRawCat(portalKey, rawSlug) {
+  const meta = PORTALS[portalKey];
+  if (!meta) return;
+  const col = meta.prefix + rawSlug;
+  const label = portalKey === 'pracuj_pl' ? (PRACUJ_LABELS[rawSlug] || slugToLabel(rawSlug)) : slugToLabel(rawSlug);
+
+  document.getElementById('mainView').classList.add('hidden');
+  document.getElementById('detailView').classList.add('active');
+  hideDetailChart();
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  document.getElementById('detailLogo').textContent = meta.label.replace(/\..*$/, '').slice(0, 2).toUpperCase();
+  document.getElementById('detailLogo').style.background = meta.color;
+  document.getElementById('detailTitle').textContent = label;
+  document.getElementById('detailSub').textContent = meta.label;
+  document.getElementById('detailSectionTitle').innerHTML = 'Historia <small>dzienna liczba ofert · Δ od poprzednich okresów</small>';
+  document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie…</div>';
+
+  document.querySelector('.detail-back').onclick = () => {
+    history.pushState({}, '', '#' + portalKey);
+    renderDetail(portalKey);
+  };
+
+  try {
+    const res = await fetch(csvUrl(meta.rawGid));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const allRows = parseCSV(await res.text());
+    if (!allRows.length) throw new Error('Brak danych');
+
+    const num = v => { const n = parseFloat(String(v || '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
+
+    allRows.sort((a, b) => (a.datetime || a.date || '') < (b.datetime || b.date || '') ? -1 : 1);
+
+    // Build daily history for this column
+    const byDate = {};
+    for (const row of allRows) {
+      const d = (row.date || row.datetime || '').slice(0, 10);
+      if (!d || !(col in row)) continue;
+      const v = num(row[col]);
+      if (!byDate[d] || v > byDate[d]) byDate[d] = v;
+    }
+
+    const allDates = Object.keys(byDate).sort();
+    const allVals = allDates.map(d => byDate[d]);
+
+    if (!allDates.length) throw new Error('Brak danych dla tej kategorii');
+
+    const latest = allVals[allVals.length - 1];
+    const latestDate = allDates[allDates.length - 1];
+
+    // Show chart
+    const labelFmt = d => new Date(d + 'T12:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+    if (allDates.length >= 2) {
+      showDetailChart(allDates.map(labelFmt), [{
+        label, data: allVals,
+        borderColor: meta.color, backgroundColor: meta.color + '18', fill: true, borderWidth: 2,
+      }], label + ' · ' + meta.label);
+    }
+
+    // Compute deltas
+    function histVal(daysBack) {
+      const target = new Date(latestDate);
+      target.setDate(target.getDate() - daysBack);
+      const tStr = target.toISOString().slice(0, 10);
+      const cand = allDates.filter(d => d <= tStr);
+      if (!cand.length) return null;
+      return byDate[cand[cand.length - 1]] ?? null;
+    }
+
+    function deltaHtml(d) {
+      if (d === null) return '<span class="detail-delta">–</span>';
+      const cls = d > 0 ? 'up' : d < 0 ? 'dn' : '';
+      return `<span class="detail-delta ${cls}">${d > 0 ? '+' : ''}${fmt(d)}</span>`;
+    }
+
+    const d7 = histVal(7), d30 = histVal(30), d90 = histVal(90), d365 = histVal(365);
+    const delta = past => past === null ? null : latest - past;
+
+    document.getElementById('detailSub').textContent = `${fmt(latest)} ofert · ${meta.label} · ${latestDate}`;
+
+    // Stats card + date table
+    const statsHtml = `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        ${[['Dziś', latest, null], ['vs 7 dni', d7, delta(d7)], ['vs 30 dni', d30, delta(d30)], ['vs 90 dni', d90, delta(d90)], ['vs rok', d365, delta(d365)]].map(([lbl, base, diff]) => `
+          <div style="min-width:80px">
+            <div style="font-size:10px;color:var(--text-faint);margin-bottom:4px">${lbl}</div>
+            <div style="font-family:var(--mono);font-size:16px;font-weight:700">${base !== null ? fmt(base) : '–'}</div>
+            ${diff !== null ? `<div style="font-size:11px;font-family:var(--mono);color:${diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--red)' : 'var(--text-faint)'}">${diff > 0 ? '+' : ''}${fmt(diff)}</div>` : ''}
+          </div>`).join('')}
+      </div>`;
+
+    const maxV = Math.max(...allVals, 1);
+    const tableHtml = allDates.slice().reverse().slice(0, 60).map((d, i, arr) => {
+      const v = byDate[d];
+      const prev = arr[i + 1] ? byDate[arr[i + 1]] : null;
+      const diff = prev !== null ? v - prev : null;
+      const cls = diff === null ? '' : diff > 0 ? 'chg-up' : diff < 0 ? 'chg-down' : 'chg-flat';
+      return `<div class="detail-cat-row">
+        <span class="detail-cat-rank" style="width:90px;text-align:left;color:var(--text-dim)">${d}</span>
+        <span class="detail-cat-num" style="width:70px">${fmt(v)}</span>
+        <span class="num ${cls}" style="font-size:12px;width:60px;text-align:right;font-family:var(--mono)">
+          ${diff !== null ? (diff > 0 ? '+' : '') + fmt(diff) : '–'}
+        </span>
+        <div class="detail-cat-bar" style="flex:1"><i style="width:${(v/maxV*100).toFixed(1)}%;background:${meta.color}"></i></div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('detailContent').innerHTML = statsHtml + tableHtml;
+  } catch (err) {
+    document.getElementById('detailSub').textContent = 'Błąd';
+    document.getElementById('detailContent').innerHTML =
+      `<div class="detail-cats-loading" style="color:#ff4d6a">${err.message}</div>`;
+  }
+}
 
 function navigateToCategory(slug) {
   history.pushState({ cat: slug }, '', '#cat/' + slug);
@@ -1269,7 +1391,7 @@ async function renderDetail(key) {
   document.getElementById('detailTitle').textContent = meta.label;
   document.getElementById('detailSub').textContent = 'Ładowanie danych…';
   document.getElementById('detailSectionTitle').innerHTML =
-    'Kategorie <small>oferty · Δ7d · Δ30d · Δ90d · Δ365d · kliknij → wykres</small>';
+    'Kategorie <small>oferty · Δ7d · Δ30d · Δ90d · Δ365d · kliknij → szczegóły</small>';
   document.getElementById('detailContent').innerHTML = '<div class="detail-cats-loading">Ładowanie…</div>';
 
   try {
@@ -1377,9 +1499,9 @@ async function renderDetail(key) {
     </div>`;
 
     const rowsHtml = rows.map((r, i) => `
-      <div class="detail-cat-row clickable" data-col="${r.col}" data-label="${r.label}">
+      <div class="detail-cat-row clickable" data-slug="${r.slug}" title="Kliknij aby zobaczyć szczegóły i historię">
         <span class="detail-cat-rank">${i + 1}</span>
-        <span class="detail-cat-name">${r.label}</span>
+        <span class="detail-cat-name">${r.label} <span style="font-size:10px;color:var(--text-faint);margin-left:4px">→</span></span>
         <span class="detail-cat-num">${fmt(r.count)}</span>
         ${deltaHtml(r.d7)}${deltaHtml(r.d30)}${deltaHtml(r.d90)}${deltaHtml(r.d365)}
         <div class="detail-cat-bar"><i style="width:${(r.count/max*100).toFixed(1)}%;background:${meta.color}"></i></div>
@@ -1387,23 +1509,9 @@ async function renderDetail(key) {
 
     document.getElementById('detailContent').innerHTML = header + rowsHtml;
 
-    // Wire click → update chart with category history
+    // Wire click → navigate to dedicated raw category subpage
     document.querySelectorAll('#detailContent .detail-cat-row.clickable').forEach(row => {
-      row.addEventListener('click', () => {
-        document.querySelectorAll('#detailContent .detail-cat-row').forEach(r => r.classList.remove('active-row'));
-        row.classList.add('active-row');
-        const col = row.dataset.col;
-        const label = row.dataset.label;
-        const catDates = allDates.filter(d => catByDate[col][d] !== undefined);
-        const catVals = catDates.map(d => catByDate[col][d]);
-        if (catDates.length >= 2) {
-          updateDetailChart(catDates.map(labelFmt), [{
-            label, data: catVals,
-            borderColor: meta.color, backgroundColor: meta.color + '18', fill: true, borderWidth: 2,
-          }], label);
-        }
-        document.getElementById('detailChartSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      });
+      row.addEventListener('click', () => navigateToPortalRawCat(key, row.dataset.slug));
     });
 
   } catch (err) {
